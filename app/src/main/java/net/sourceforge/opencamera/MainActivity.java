@@ -298,7 +298,12 @@ public class MainActivity extends AppCompatActivity {
         settingsManager = new SettingsManager(this);
         mainUI = new MainUI(this);
         manualSeekbars = new ManualSeekbars();
-        applicationInterface = new MyApplicationInterface(this, savedInstanceState);
+        try {
+            applicationInterface = new AestheticsApplicationInterface(this, savedInstanceState);
+        } catch (IOException e) {
+            if( MyDebug.LOG ) Log.d(TAG, "IOException when accessing model file");
+            e.printStackTrace();
+        }
         if( MyDebug.LOG )
             Log.d(TAG, "onCreate: time after creating application interface: " + (System.currentTimeMillis() - debug_time));
         textFormatter = new TextFormatter(this);

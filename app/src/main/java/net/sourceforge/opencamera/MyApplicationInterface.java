@@ -3232,7 +3232,7 @@ public class MyApplicationInterface extends BasicApplicationInterface {
      * @param current_date The current date/time stamp for the images.
      * @return Whether saving was successful.
      */
-    private boolean saveImage(boolean save_expo, List<byte []> images, Date current_date) {
+    public boolean saveImage(boolean save_expo, List<byte []> images, Date current_date) {
         if( MyDebug.LOG )
             Log.d(TAG, "saveImage");
 
@@ -3459,6 +3459,7 @@ public class MyApplicationInterface extends BasicApplicationInterface {
 
     @Override
     public boolean onPictureTaken(byte [] data, Date current_date) {
+
         if( MyDebug.LOG )
             Log.d(TAG, "onPictureTaken");
 
