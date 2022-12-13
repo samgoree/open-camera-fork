@@ -3,6 +3,7 @@ package net.sourceforge.opencamera;
 import net.sourceforge.opencamera.cameracontroller.CameraController;
 import net.sourceforge.opencamera.preview.Preview;
 import net.sourceforge.opencamera.ui.ArraySeekBarPreference;
+import net.sourceforge.opencamera.ui.DrawAestheticsIndicator;
 import net.sourceforge.opencamera.ui.FolderChooserDialog;
 import net.sourceforge.opencamera.ui.MyEditTextPreference;
 
@@ -22,6 +23,7 @@ import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.TypedArray;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Point;
 //import android.net.Uri;
@@ -35,6 +37,7 @@ import android.preference.Preference.OnPreferenceClickListener;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceGroup;
 import android.preference.PreferenceManager;
+import android.preference.SwitchPreference;
 import android.preference.TwoStatePreference;
 import android.text.Html;
 import android.text.SpannableString;
@@ -1635,6 +1638,33 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
                         dialogs.add(alert);
                     }
                     return false;
+                }
+            });
+        }
+        {
+            final Preference pref = (Preference)findPreference(PreferenceKeys.AestheticsModeKey);
+            pref.setOnPreferenceChangeListener(new OnPreferenceChangeListener() {
+                @Override
+                public boolean onPreferenceChange(Preference arg0, Object newValue) {
+                    MainActivity main_activity = (MainActivity)MyPreferenceFragment.this.getActivity();
+                    AestheticsApplicationInterface aai = (AestheticsApplicationInterface)main_activity.getApplicationInterface();
+                    View aestheticsIndicator = aai.getAestheticsIndicatorView();
+                    View takePhotoButton = main_activity.findViewById(R.id.take_photo);
+                    if(newValue.equals(true)) {
+                        // hide the shutter button
+                        takePhotoButton.setVisibility(View.GONE); //totally invisible
+                        // reveal the aestheticsIndicator canvas in the same location
+                        aestheticsIndicator.setVisibility(View.VISIBLE);
+
+                    } else {
+                        // hide the aestheticsIndicator canvas
+                        aestheticsIndicator.setVisibility(View.GONE);
+                        // reveal the shutter button
+                        takePhotoButton.setVisibility(View.VISIBLE);
+
+                        aai.start_take_photo_and_classify();
+                    }
+                    return true;
                 }
             });
         }

@@ -6,6 +6,7 @@ import net.sourceforge.opencamera.cameracontroller.CameraControllerManager2;
 import net.sourceforge.opencamera.preview.Preview;
 import net.sourceforge.opencamera.preview.VideoProfile;
 import net.sourceforge.opencamera.remotecontrol.BluetoothRemoteControl;
+import net.sourceforge.opencamera.ui.AestheticsIndicatorView;
 import net.sourceforge.opencamera.ui.FolderChooserDialog;
 import net.sourceforge.opencamera.ui.MainUI;
 import net.sourceforge.opencamera.ui.ManualSeekbars;
@@ -124,6 +125,7 @@ public class MainActivity extends AppCompatActivity {
     //private SpeechControl speechControl;
 
     private Preview preview;
+    private AestheticsIndicator aestheticsIndicator;
     private OrientationEventListener orientationEventListener;
     private int large_heap_memory;
     private boolean supports_auto_stabilise;
@@ -649,6 +651,12 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         }).start();
+
+        // start aesthetics async
+        if(sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false)) {
+            AestheticsApplicationInterface aai = (AestheticsApplicationInterface)this.applicationInterface;
+            aai.start_take_photo_and_classify();
+        }
 
         // create notification channel - only needed on Android 8+
         if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ) {
@@ -1438,6 +1446,13 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        if(applicationInterface instanceof AestheticsApplicationInterface
+                && sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false) ){
+            AestheticsApplicationInterface aai = (AestheticsApplicationInterface) applicationInterface;
+            aai.resume_take_photo_and_classify();
+        }
+
         if( MyDebug.LOG ) {
             Log.d(TAG, "onResume: total time to resume: " + (System.currentTimeMillis() - debug_time));
         }
@@ -1494,6 +1509,12 @@ public class MainActivity extends AppCompatActivity {
 
         // intentionally do this again, just in case something turned location on since - keep this right at the end:
         applicationInterface.getLocationSupplier().freeLocationListeners();
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        if(applicationInterface instanceof AestheticsApplicationInterface
+                && sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false) ){
+            AestheticsApplicationInterface aai = (AestheticsApplicationInterface) applicationInterface;
+            aai.pause_take_photo_and_classify();
+        }
 
         if( MyDebug.LOG ) {
             Log.d(TAG, "onPause: total time to pause: " + (System.currentTimeMillis() - debug_time));

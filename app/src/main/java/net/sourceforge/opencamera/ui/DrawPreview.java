@@ -14,6 +14,7 @@ import net.sourceforge.opencamera.ImageSaver;
 import net.sourceforge.opencamera.LocationSupplier;
 import net.sourceforge.opencamera.MainActivity;
 import net.sourceforge.opencamera.MyApplicationInterface;
+import net.sourceforge.opencamera.AestheticsApplicationInterface;
 import net.sourceforge.opencamera.MyDebug;
 import net.sourceforge.opencamera.PreferenceKeys;
 import net.sourceforge.opencamera.preview.ApplicationInterface;
@@ -2008,6 +2009,13 @@ public class DrawPreview {
                     p.setTextSize(14 * scale + 0.5f); // convert dps to pixels
                     p.setTextAlign(Paint.Align.CENTER);
                     applicationInterface.drawTextWithBackground(canvas, p, getContext().getResources().getString(R.string.zoom) + ": " + zoom_ratio +"x", Color.WHITE, Color.BLACK, canvas.getWidth() / 2, text_base_y - text_y, MyApplicationInterface.Alignment.ALIGNMENT_BOTTOM, ybounds_text, MyApplicationInterface.Shadow.SHADOW_OUTLINE);
+                }
+            }
+
+            if (applicationInterface instanceof AestheticsApplicationInterface) {
+                AestheticsApplicationInterface aai = (AestheticsApplicationInterface) applicationInterface;
+                if (aai.show_imagenet) {
+                    aai.drawTextWithBackground(canvas, p, aai.imagenet_text, Color.WHITE, Color.BLACK, canvas.getWidth() / 2, text_base_y - 2 * text_y, MyApplicationInterface.Alignment.ALIGNMENT_BOTTOM, ybounds_text, MyApplicationInterface.Shadow.SHADOW_OUTLINE);
                 }
             }
 

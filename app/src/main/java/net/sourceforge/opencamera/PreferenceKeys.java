@@ -5,6 +5,8 @@ package net.sourceforge.opencamera;
 public class PreferenceKeys {
     // must be static, to safely call from other Activities
 
+    public static final String AestheticsModeKey = "preference_aesthetics_mode";
+
     /** If this preference is set, no longer show the intro dialog.
      */
     public static final String FirstTimePreferenceKey = "done_first_time";

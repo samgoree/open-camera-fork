@@ -1,5 +1,6 @@
 package net.sourceforge.opencamera.ui;
 
+import net.sourceforge.opencamera.AestheticsApplicationInterface;
 import net.sourceforge.opencamera.MyApplicationInterface;
 import net.sourceforge.opencamera.cameracontroller.CameraController;
 import net.sourceforge.opencamera.MainActivity;
@@ -565,7 +566,7 @@ public class MainUI {
 
             // end icon panel
 
-            view = main_activity.findViewById(R.id.take_photo);
+            view = main_activity.findViewById(R.id.take_photo_or_aesthetics);
             layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
             layoutParams.addRule(align_parent_left, 0);
             layoutParams.addRule(align_parent_right, RelativeLayout.TRUE);
@@ -577,13 +578,29 @@ public class MainUI {
             view.setLayoutParams(layoutParams);
             setViewRotation(view, ui_rotation);
 
+            // either the subview of the take_photo_or_aesthetics will be the take_photo button
+            // or it will be the aesthetics surface view. We want both to take up the full space.
+            view = main_activity.findViewById(R.id.take_photo);
+            view.setVisibility(
+                    sharedPreferences.getBoolean("preference_aesthetics_mode", false)
+                            ? View.INVISIBLE : View.VISIBLE
+            );
+            view.setClickable(!sharedPreferences.getBoolean("preference_aesthetics_mode", false));
+
+            AestheticsApplicationInterface aai = (AestheticsApplicationInterface) main_activity.getApplicationInterface();
+            view = aai.getAestheticsIndicatorView();
+            view.setVisibility(
+                    sharedPreferences.getBoolean("preference_aesthetics_mode", false)
+                            ? View.VISIBLE : View.INVISIBLE
+            );
+
             view = main_activity.findViewById(R.id.switch_camera);
             layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
             layoutParams.addRule(align_parent_left, 0);
             layoutParams.addRule(align_parent_right, RelativeLayout.TRUE);
             layoutParams.addRule(align_parent_top, 0);
             layoutParams.addRule(align_parent_bottom, 0);
-            layoutParams.addRule(ui_independent_above, R.id.take_photo);
+            layoutParams.addRule(ui_independent_above, R.id.take_photo_or_aesthetics);
             layoutParams.addRule(ui_independent_below, 0);
             layoutParams.addRule(ui_independent_left_of, 0);
             layoutParams.addRule(ui_independent_right_of, 0);
@@ -614,7 +631,7 @@ public class MainUI {
             layoutParams.addRule(align_parent_right, RelativeLayout.TRUE);
             layoutParams.addRule(align_parent_top, 0);
             layoutParams.addRule(align_parent_bottom, 0);
-            layoutParams.addRule(ui_independent_above, R.id.take_photo);
+            layoutParams.addRule(ui_independent_above, R.id.take_photo_or_aesthetics);
             layoutParams.addRule(ui_independent_below, 0);
             layoutParams.addRule(ui_independent_left_of, 0);
             layoutParams.addRule(ui_independent_right_of, 0);
@@ -628,7 +645,7 @@ public class MainUI {
             layoutParams.addRule(align_parent_right, RelativeLayout.TRUE);
             layoutParams.addRule(align_parent_top, 0);
             layoutParams.addRule(align_parent_bottom, 0);
-            layoutParams.addRule(above, R.id.take_photo);
+            layoutParams.addRule(above, R.id.take_photo_or_aesthetics);
             layoutParams.addRule(below, 0);
             layoutParams.addRule(left_of, 0);
             layoutParams.addRule(right_of, 0);
@@ -643,7 +660,7 @@ public class MainUI {
             layoutParams.addRule(align_parent_top, 0);
             layoutParams.addRule(align_parent_bottom, 0);
             layoutParams.addRule(ui_independent_above, 0);
-            layoutParams.addRule(ui_independent_below, R.id.take_photo);
+            layoutParams.addRule(ui_independent_below, R.id.take_photo_or_aesthetics);
             layoutParams.addRule(ui_independent_left_of, 0);
             layoutParams.addRule(ui_independent_right_of, 0);
             setMarginsForSystemUI(layoutParams, 0, 0, navigation_gap, 0);
@@ -657,7 +674,7 @@ public class MainUI {
             layoutParams.addRule(align_parent_top, 0);
             layoutParams.addRule(align_parent_bottom, 0);
             layoutParams.addRule(ui_independent_above, 0);
-            layoutParams.addRule(ui_independent_below, R.id.take_photo);
+            layoutParams.addRule(ui_independent_below, R.id.take_photo_or_aesthetics);
             layoutParams.addRule(ui_independent_left_of, 0);
             layoutParams.addRule(ui_independent_right_of, 0);
             setMarginsForSystemUI(layoutParams, 0, 0, navigation_gap, 0);

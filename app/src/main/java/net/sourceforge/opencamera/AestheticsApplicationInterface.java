@@ -1,14 +1,12 @@
 package net.sourceforge.opencamera;
 
-import android.app.AlertDialog;
 import android.os.Bundle;
 import android.util.Log;
 
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.widget.ImageView;
-import android.widget.TextView;
+import android.view.ViewGroup;
 
 import org.pytorch.IValue;
 import org.pytorch.LiteModuleLoader;
@@ -27,24 +25,251 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import org.pytorch.LiteModuleLoader;
-import android.content.Context;
+import net.sourceforge.opencamera.cameracontroller.CameraController;
+import net.sourceforge.opencamera.cameracontroller.CameraControllerException;
+import net.sourceforge.opencamera.cameracontroller.RawImage;
+import net.sourceforge.opencamera.ui.AestheticsIndicatorView;
+import net.sourceforge.opencamera.ui.DrawPreview;
+import net.sourceforge.opencamera.ui.DrawAestheticsIndicator;
 
 public class AestheticsApplicationInterface extends MyApplicationInterface{
 
     private static final String TAG = "AestheticsAppInterface";
+
+    public boolean show_imagenet = false;
+    public String imagenet_text = "";
+    public float aesthetics_score = 0;
+    private boolean safe_to_take_photo;
+    public static long delayInMS = 5000;
+
+    private DrawPreview drawPreview;
 
     private int n_capture_images = 0; // how many calls to onPictureTaken() since the last call to onCaptureStarted()
 
     private Bitmap bitmap = null;
     private Module module = null;
     private MainActivity main_activity = null;
+    private Thread classify_thread;
+    private boolean paused;
+    private Object pauseLock;
+    private Object takePhotoLock;
+
+
+    private AestheticsIndicator aestheticsIndicator;
+    private DrawAestheticsIndicator drawAestheticsIndicator;
 
     public AestheticsApplicationInterface(MainActivity main_activity, Bundle savedInstanceState) throws IOException {
         super(main_activity, savedInstanceState);
         this.main_activity = main_activity;
-        this.module = LiteModuleLoader.load(assetFilePath(main_activity, "model.pt"));
+        this.module = LiteModuleLoader.load(assetFilePath(main_activity, "imagenet_model.pt"));
+        this.drawPreview = new DrawPreview(main_activity, this);
+
+        ViewGroup takePhotoOrAesthetics = main_activity.findViewById(R.id.take_photo_or_aesthetics);
+
+        this.aestheticsIndicator = new AestheticsIndicator( this, this.main_activity);
+
+        this.drawAestheticsIndicator = new DrawAestheticsIndicator(main_activity, this, this.aestheticsIndicator);
+        this.safe_to_take_photo = true;
+        this.classify_thread = null;
+        this.paused = false;
+        this.pauseLock = new Object();
+        this.takePhotoLock = new Object();
     }
+
+    public DrawAestheticsIndicator getDrawAestheticsIndicator(){
+        return this.drawAestheticsIndicator;
+    }
+
+    private float[] classify(Tensor inputTensor){
+
+        // a potentially time consuming task
+        // running the model
+        final Tensor outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
+
+        // getting tensor content as java array of floats
+        final float[] scores = outputTensor.getDataAsFloatArray();
+
+        return scores;
+    }
+
+    public void start_take_photo_and_classify(){
+        this.classify_thread = this.take_photo_and_classify_async(delayInMS);
+        this.paused = false;
+    }
+
+    public void pause_take_photo_and_classify(){
+        synchronized(pauseLock){
+            this.paused = true;
+        }
+    }
+    public void resume_take_photo_and_classify(){
+        synchronized (pauseLock){
+            this.paused = false;
+            pauseLock.notifyAll();
+        }
+    }
+
+    private Thread take_photo_and_classify_async(long delayInMS){
+        Thread thread = new Thread(new Runnable () {
+            @Override
+            public void run() {
+
+                while (true) {
+                    CameraController camera = main_activity.getPreview().getCameraController();
+                    if (camera != null) {
+                        CameraController.PictureCallback jpeg = new CameraController.PictureCallback() {
+                            public void onPictureTaken(byte[] data) {
+                                try {
+                                    camera.startPreview();
+                                } catch (CameraControllerException e) {
+                                    if (MyDebug.LOG)
+                                        Log.e(TAG, "error from aesthetics application interface start preview");
+                                    e.printStackTrace();
+                                }
+                                BitmapFactory.Options opt = new BitmapFactory.Options();
+                                opt.outHeight = 227;
+                                opt.outWidth = 227;
+                                Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, opt);
+
+                                final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(bitmap,
+                                        TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB, MemoryFormat.CHANNELS_LAST);
+                                float[] scores = classify(inputTensor);
+                                double total = 0;
+                                for (int i = 0; i < scores.length; i++) {
+                                    total += Math.exp(scores[i]);
+                                }
+                                // searching for the index with maximum score
+                            /*float maxScore = -Float.MAX_VALUE;
+                            int maxScoreIdx = -1;
+                            for (int i = 0; i < scores.length; i++) {
+                                if (scores[i] > maxScore) {
+                                    maxScore = scores[i];
+                                    maxScoreIdx = i;
+                                }
+                            }
+                            String className = ImageNetClasses.IMAGENET_CLASSES[maxScoreIdx];
+                            show_imagenet = true;
+                            imagenet_text = "Class: " + className + " Score: " + Float.toString(maxScore);
+                            */
+                                show_imagenet = true;
+                                double value = Math.exp(scores[330]) / total;
+                                imagenet_text = "Rabbit: " + Double.toString((double) Math.round(value * 10000d) / 10000d);
+                                drawAestheticsIndicator.draw(value);
+                                this.onCompleted();
+                            }
+
+                            public void onStarted() {
+                                if (MyDebug.LOG)
+                                    Log.d(TAG, "aesthetetics application interface onStarted");
+                            } // called immediately before we start capturing the picture
+
+                            public void onCompleted() {
+                                synchronized (takePhotoLock) {
+                                    safe_to_take_photo = true;
+                                    takePhotoLock.notifyAll();
+                                }
+                                if (MyDebug.LOG)
+                                    Log.d(TAG, "aesthetetics application interface onCompleted");
+                            }
+
+                            public void onRawPictureTaken(RawImage raw_image) {
+                                if (MyDebug.LOG)
+                                    Log.d(TAG, "aesthetetics application interface onRawPictureTaken");
+                            }
+
+                            /**
+                             * Only called if burst is requested.
+                             */
+                            public void onBurstPictureTaken(List<byte[]> images) {
+                                if (MyDebug.LOG)
+                                    Log.d(TAG, "aesthetetics application interface onBurstPictureTaken");
+                            }
+
+                            /**
+                             * Only called if burst is requested.
+                             */
+                            public void onRawBurstPictureTaken(List<RawImage> raw_images) {
+                                if (MyDebug.LOG)
+                                    Log.d(TAG, "aesthetetics application interface onRawBurstPictureTaken");
+                            }
+
+                            /* This is called for flash_frontscreen_auto or flash_frontscreen_on mode to indicate the caller should light up the screen
+                             * (for flash_frontscreen_auto it will only be called if the scene is considered dark enough to require the screen flash).
+                             * The screen flash can be removed when or after onCompleted() is called.
+                             */
+                            /* This is called for when burst mode is BURSTTYPE_FOCUS or BURSTTYPE_CONTINUOUS, to ask whether it's safe to take
+                             * n_raw extra RAW images and n_jpegs extra JPEG images, or whether to wait.
+                             */
+                            public boolean imageQueueWouldBlock(int n_raw, int n_jpegs) {
+                                if (MyDebug.LOG)
+                                    Log.d(TAG, "aesthetetics application interface imageQueueWouldBlock");
+                                return false;
+                            }
+
+                            public void onFrontScreenTurnOn() {
+                                synchronized(takePhotoLock) {
+                                    safe_to_take_photo = true;
+                                    takePhotoLock.notifyAll();
+                                }
+                                if (MyDebug.LOG)
+                                    Log.d(TAG, "aesthetetics application interface onFrontScreenTurnOn");
+                            }
+                        };
+                        CameraController.ErrorCallback err = new CameraController.ErrorCallback() {
+                            public void onError() {
+                                synchronized(takePhotoLock) {
+                                    safe_to_take_photo = true;
+                                    takePhotoLock.notifyAll();
+                                }
+                                if (MyDebug.LOG)
+                                    Log.e(TAG, "error from aesthetics application interface takePicture");
+                            }
+                        };
+                        synchronized (takePhotoLock) {
+
+                            try {
+                                while (!safe_to_take_photo) {
+                                    takePhotoLock.wait();
+                                }
+                            } catch (InterruptedException e) {
+                            }
+                            safe_to_take_photo = false;
+                            try {
+                                camera.takePicture(jpeg, err);
+
+                            } catch (RuntimeException e) {
+                                if (MyDebug.LOG) Log.e(TAG, "runtime exception in takePicture");
+                                e.printStackTrace();
+                                safe_to_take_photo = true;
+                                takePhotoLock.notifyAll();
+                            }
+
+                        }
+                    }
+                    try {
+                        Thread.sleep(delayInMS);
+                    } catch (InterruptedException e) {
+                        continue;
+                    }
+                    synchronized (pauseLock) {
+                        while (paused) {
+                            try {
+                                pauseLock.wait();
+                            } catch (InterruptedException e) {
+                            }
+                        }
+                    }
+
+                }
+
+            }
+
+        });
+        thread.start();
+        return thread;
+    }
+
+
 
     @Override
     public boolean onPictureTaken(byte [] data, Date current_date) {
@@ -60,42 +285,13 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
 
         Bitmap bitmap = BitmapFactory.decodeByteArray(data , 0, data.length);
 
-        final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(bitmap,
-                TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB, MemoryFormat.CHANNELS_LAST);
-
-        // running the model
-        final Tensor outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
-
-        // getting tensor content as java array of floats
-        final float[] scores = outputTensor.getDataAsFloatArray();
-
-        // searching for the index with maximum score
-        float maxScore = -Float.MAX_VALUE;
-        int maxScoreIdx = -1;
-        for (int i = 0; i < scores.length; i++) {
-            if (scores[i] > maxScore) {
-                maxScore = scores[i];
-                maxScoreIdx = i;
-            }
-        }
-
-        String className = ImageNetClasses.IMAGENET_CLASSES[maxScoreIdx];
-
         List<byte []> images = new ArrayList<>();
         images.add(data);
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(this.main_activity);
-        long time_diff = System.currentTimeMillis() - start_time;
-        builder.setMessage("Class:" + className + "\nTime: " + Float.toString(time_diff / 1000.0f) + "s.").setTitle("imagenet");
-        AlertDialog alert = builder.create();
-
-        alert.show();
 
         boolean success = saveImage(false, images, current_date);
 
         if( MyDebug.LOG )
             Log.d(TAG, "onPictureTaken complete, success: " + success);
-
         return success;
     }
 
@@ -117,4 +313,6 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
             return file.getAbsolutePath();
         }
     }
+
+    public AestheticsIndicatorView getAestheticsIndicatorView(){ return this.aestheticsIndicator.getSurface();}
 }

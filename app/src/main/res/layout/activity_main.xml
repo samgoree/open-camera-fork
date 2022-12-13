@@ -6,23 +6,39 @@
     tools:context=".MainActivity" >
 
     <FrameLayout
+        android:id="@+id/take_photo_or_aesthetics"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_centerInParent="true">
+        <ImageButton
+            android:id="@+id/take_photo"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:padding="10dp"
+            android:scaleType="fitCenter"
+            android:contentDescription="@string/take_photo"
+            app:srcCompat="@drawable/take_photo_selector"
+            android:onClick="clickedTakePhoto"
+            android:background="@null"
+            />
+        <net.sourceforge.opencamera.ui.AestheticsIndicatorView
+            android:id="@+id/aesthetics_indicator_view"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:padding="10dp"
+            android:scaleType="fitCenter"
+            android:contentDescription="shows the aesthetics rating"
+            />
+    </FrameLayout>
+
+    <FrameLayout
         android:id="@+id/preview"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerInParent="true"
         />
     
-    <ImageButton
-        android:id="@+id/take_photo"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
-        android:padding="10dp"
-        android:scaleType="fitCenter"
-        android:contentDescription="@string/take_photo"
-        app:srcCompat="@drawable/take_photo_selector"
-        android:onClick="clickedTakePhoto"
-        android:background="@null"
-        />
+
 
     <ImageButton
         android:id="@+id/switch_camera"
