@@ -61,7 +61,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
     public AestheticsApplicationInterface(MainActivity main_activity, Bundle savedInstanceState) throws IOException {
         super(main_activity, savedInstanceState);
         this.main_activity = main_activity;
-        this.module = LiteModuleLoader.load(assetFilePath(main_activity, "imagenet_model.pt"));
+        this.module = LiteModuleLoader.load(assetFilePath(main_activity, "test.pt"));
         this.drawPreview = new DrawPreview(main_activity, this);
 
         ViewGroup takePhotoOrAesthetics = main_activity.findViewById(R.id.take_photo_or_aesthetics);
@@ -81,9 +81,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
     }
 
     private float[] classify(Tensor inputTensor){
-
-        // a potentially time consuming task
-        // running the model
+        
         final Tensor outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
 
         // getting tensor content as java array of floats
@@ -94,7 +92,9 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
 
     public void start_take_photo_and_classify(){
         this.classify_thread = this.take_photo_and_classify_async(delayInMS);
-        this.paused = false;
+        synchronized(pauseLock) {
+            this.paused = false;
+        }
     }
 
     public void pause_take_photo_and_classify(){
@@ -117,6 +117,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                 while (true) {
                     CameraController camera = main_activity.getPreview().getCameraController();
                     if (camera != null) {
+                        camera.enableShutterSound(false);
                         CameraController.PictureCallback jpeg = new CameraController.PictureCallback() {
                             public void onPictureTaken(byte[] data) {
                                 try {
@@ -126,18 +127,42 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                                         Log.e(TAG, "error from aesthetics application interface start preview");
                                     e.printStackTrace();
                                 }
+                                // decode at low resolution to save time
                                 BitmapFactory.Options opt = new BitmapFactory.Options();
-                                opt.outHeight = 227;
-                                opt.outWidth = 227;
+                                opt.outHeight = 224;
+                                opt.outWidth = 224;
+                                opt.inSampleSize = 4;
                                 Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, opt);
 
-                                final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(bitmap,
-                                        TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB, MemoryFormat.CHANNELS_LAST);
-                                float[] scores = classify(inputTensor);
-                                double total = 0;
-                                for (int i = 0; i < scores.length; i++) {
-                                    total += Math.exp(scores[i]);
+                                // center crop to get it square
+                                Bitmap croppedBitmap;
+                                if(bitmap.getHeight() > bitmap.getWidth()) {
+                                    croppedBitmap = Bitmap.createBitmap(bitmap,
+                                            0,
+                                            (int) ((bitmap.getHeight() / 2) - (bitmap.getWidth() / 2)),
+                                            bitmap.getWidth(),
+                                            bitmap.getWidth());
+                                }else{
+                                    croppedBitmap = Bitmap.createBitmap(bitmap,
+                                            (int) ((bitmap.getWidth() / 2) - (bitmap.getHeight() / 2)),
+                                            0,
+                                            bitmap.getHeight(),
+                                            bitmap.getHeight());
                                 }
+                                // downsample to 224
+                                Bitmap resizedBitmap = Bitmap.createScaledBitmap(
+                                        croppedBitmap,
+                                        224,
+                                        224,
+                                        false
+                                );
+
+                                final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
+                                        resizedBitmap,
+                                        new float[] {0.0f, 0.0f, 0.0f},
+                                        new float[] {1.0f, 1.0f, 1.0f},
+                                        MemoryFormat.CHANNELS_LAST);
+                                float value = classify(inputTensor)[0];
                                 // searching for the index with maximum score
                             /*float maxScore = -Float.MAX_VALUE;
                             int maxScoreIdx = -1;
@@ -152,8 +177,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                             imagenet_text = "Class: " + className + " Score: " + Float.toString(maxScore);
                             */
                                 show_imagenet = true;
-                                double value = Math.exp(scores[330]) / total;
-                                imagenet_text = "Rabbit: " + Double.toString((double) Math.round(value * 10000d) / 10000d);
+                                imagenet_text = "Quality: " + Double.toString((double) Math.round(value * 10000d) / 10000d);
                                 drawAestheticsIndicator.draw(value);
                                 this.onCompleted();
                             }

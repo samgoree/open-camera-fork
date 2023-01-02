@@ -21,7 +21,7 @@ public class DrawAestheticsIndicator {
 
     public void onDraw(Canvas canvas, double score) {
         Paint p = new Paint();
-        p.setARGB(255,0,0,255);
+        p.setARGB(255,(int)(-score * 128 + 128),0,(int)(score * 128 + 128));
         canvas.drawCircle(125,125,(float)(100), p);
     }
 
