@@ -398,6 +398,7 @@ public abstract class CameraController {
         BURSTTYPE_CONTINUOUS // as BURSTTYPE_NORMAL, but bursts will fire continually until stopContinuousBurst() is called.
     }
     public abstract void setBurstType(BurstType new_burst_type);
+    public abstract void setAestheticsMode(boolean aestheticsMode);
     public abstract BurstType getBurstType();
     /** Only relevant if setBurstType() is also called with BURSTTYPE_NORMAL. Sets the number of
      *  images to take in the burst.

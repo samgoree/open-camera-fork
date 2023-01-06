@@ -2014,8 +2014,8 @@ public class DrawPreview {
 
             if (applicationInterface instanceof AestheticsApplicationInterface) {
                 AestheticsApplicationInterface aai = (AestheticsApplicationInterface) applicationInterface;
-                if (aai.show_imagenet) {
-                    aai.drawTextWithBackground(canvas, p, aai.imagenet_text, Color.WHITE, Color.BLACK, canvas.getWidth() / 2, text_base_y - 2 * text_y, MyApplicationInterface.Alignment.ALIGNMENT_BOTTOM, ybounds_text, MyApplicationInterface.Shadow.SHADOW_OUTLINE);
+                if (aai.show_message) {
+                    aai.drawTextWithBackground(canvas, p, aai.message_text, Color.WHITE, Color.BLACK, canvas.getWidth() / 2, text_base_y - 2 * text_y, MyApplicationInterface.Alignment.ALIGNMENT_BOTTOM, ybounds_text, MyApplicationInterface.Shadow.SHADOW_OUTLINE);
                 }
             }
 

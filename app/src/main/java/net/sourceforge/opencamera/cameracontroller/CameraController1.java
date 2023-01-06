@@ -32,6 +32,7 @@ public class CameraController1 extends CameraController {
     private final ErrorCallback camera_error_cb;
     private boolean sounds_enabled = true;
 
+    private boolean is_aesthetics_mode;
     private int n_burst; // number of expected burst images in this capture
     private final List<byte []> pending_burst_images = new ArrayList<>(); // burst images that have been captured so far, but not yet sent to the application
     private List<Integer> burst_exposures;
@@ -773,6 +774,11 @@ public class CameraController1 extends CameraController {
     @Override
     public int getCameraExtension() {
         return -1;
+    }
+
+    @Override
+    public void setAestheticsMode(boolean aestheticsMode){
+        this.is_aesthetics_mode = aestheticsMode;
     }
 
     @Override

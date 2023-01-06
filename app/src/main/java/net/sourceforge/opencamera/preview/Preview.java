@@ -1,5 +1,7 @@
 package net.sourceforge.opencamera.preview;
 
+import net.sourceforge.opencamera.AestheticsApplicationInterface;
+import net.sourceforge.opencamera.PreferenceKeys;
 import net.sourceforge.opencamera.cameracontroller.RawImage;
 //import net.sourceforge.opencamera.MainActivity;
 import net.sourceforge.opencamera.MyDebug;
@@ -2233,6 +2235,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
     public void setupBurstMode() {
         if( MyDebug.LOG )
             Log.d(TAG, "setupBurstMode()");
+        camera_controller.setAestheticsMode(((AestheticsApplicationInterface)applicationInterface).isAestheticsMode());
         if( this.supports_expo_bracketing && applicationInterface.isExpoBracketingPref() ) {
             camera_controller.setBurstType(CameraController.BurstType.BURSTTYPE_EXPO);
             camera_controller.setExpoBracketingNImages( applicationInterface.getExpoBracketingNImagesPref() );
@@ -2261,8 +2264,14 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
                 camera_controller.setBurstNImages(applicationInterface.getBurstNImages());
             }
         }
-        else {
+        // if we're in aesthetics mode we're not going to burst
+        else if ( ((AestheticsApplicationInterface)applicationInterface).isAestheticsMode()){
             camera_controller.setBurstType(CameraController.BurstType.BURSTTYPE_NONE);
+        }
+        else {
+            camera_controller.setBurstType(CameraController.BurstType.BURSTTYPE_NORMAL);
+            camera_controller.setBurstForNoiseReduction(false, false);
+            camera_controller.setBurstNImages(applicationInterface.getBurstNImages());
         }
     }
 

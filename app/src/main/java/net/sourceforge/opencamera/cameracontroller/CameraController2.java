@@ -184,6 +184,7 @@ public class CameraController2 extends CameraController {
 
     private ImageReader imageReader;
 
+    private boolean is_aesthetics_mode;
     private BurstType burst_type = BurstType.BURSTTYPE_NONE;
     // for BURSTTYPE_EXPO:
     private final static int max_expo_bracketing_n_images = 5; // could be more, but limit to 5 for now
@@ -4398,6 +4399,10 @@ public class CameraController2 extends CameraController {
         this.noise_reduction_low_light = noise_reduction_low_light;
     }
 
+    public void setAestheticsMode(boolean aestheticsMode){
+        this.is_aesthetics_mode = aestheticsMode;
+    }
+
     @Override
     public boolean isContinuousBurstInProgress() {
         return continuous_burst_in_progress;
@@ -7068,6 +7073,8 @@ public class CameraController2 extends CameraController {
         }
     }
 
+
+
     private void takePictureBurst(boolean continuing_fast_burst) {
         if( MyDebug.LOG )
             Log.d(TAG, "takePictureBurst");
@@ -7229,8 +7236,11 @@ public class CameraController2 extends CameraController {
                     stillBuilder.addTarget(imageReaderRaw.getSurface());
                 n_burst_total = n_burst;
                 n_burst_raw = raw_todo ? n_burst : 0;
-                burst_single_request = false;
-
+                if(is_aesthetics_mode) {
+                    burst_single_request = false;
+                } else {
+                    burst_single_request = true;
+                }
                 if( MyDebug.LOG )
                     Log.d(TAG, "n_burst: " + n_burst);
 

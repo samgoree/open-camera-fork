@@ -1,6 +1,8 @@
 package net.sourceforge.opencamera;
 
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.util.Log;
 
 import android.content.Context;
@@ -36,11 +38,11 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
 
     private static final String TAG = "AestheticsAppInterface";
 
-    public boolean show_imagenet = false;
-    public String imagenet_text = "";
+    public boolean show_message = false;
+    public String message_text = "";
     public float aesthetics_score = 0;
     private boolean safe_to_take_photo;
-    public static long delayInMS = 5000;
+    public static long delayInMS = 500;
 
     private DrawPreview drawPreview;
 
@@ -54,6 +56,8 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
     private Object pauseLock;
     private Object takePhotoLock;
 
+    private SharedPreferences sharedPreferences;
+
 
     private AestheticsIndicator aestheticsIndicator;
     private DrawAestheticsIndicator drawAestheticsIndicator;
@@ -61,7 +65,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
     public AestheticsApplicationInterface(MainActivity main_activity, Bundle savedInstanceState) throws IOException {
         super(main_activity, savedInstanceState);
         this.main_activity = main_activity;
-        this.module = LiteModuleLoader.load(assetFilePath(main_activity, "test.pt"));
+        this.module = LiteModuleLoader.load(assetFilePath(main_activity, "classical.pt"));
         this.drawPreview = new DrawPreview(main_activity, this);
 
         ViewGroup takePhotoOrAesthetics = main_activity.findViewById(R.id.take_photo_or_aesthetics);
@@ -74,6 +78,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         this.paused = false;
         this.pauseLock = new Object();
         this.takePhotoLock = new Object();
+        this.sharedPreferences = PreferenceManager.getDefaultSharedPreferences(main_activity);
     }
 
     public DrawAestheticsIndicator getDrawAestheticsIndicator(){
@@ -90,8 +95,48 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         return scores;
     }
 
+    private Bitmap decode_small_bitmap(byte[] data){
+        // decode at low resolution to save time
+        BitmapFactory.Options opt = new BitmapFactory.Options();
+        opt.outHeight = 224;
+        opt.outWidth = 224;
+        opt.inSampleSize = 4;
+        Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, opt);
+
+        // center crop to get it square
+        Bitmap croppedBitmap;
+        if(bitmap.getHeight() > bitmap.getWidth()) {
+            croppedBitmap = Bitmap.createBitmap(bitmap,
+                    0,
+                    (int) ((bitmap.getHeight() / 2) - (bitmap.getWidth() / 2)),
+                    bitmap.getWidth(),
+                    bitmap.getWidth());
+        }else{
+            croppedBitmap = Bitmap.createBitmap(bitmap,
+                    (int) ((bitmap.getWidth() / 2) - (bitmap.getHeight() / 2)),
+                    0,
+                    bitmap.getHeight(),
+                    bitmap.getHeight());
+        }
+        // downsample to 224
+        Bitmap resizedBitmap = Bitmap.createScaledBitmap(
+                croppedBitmap,
+                224,
+                224,
+                false
+        );
+        return resizedBitmap;
+    }
+
     public void start_take_photo_and_classify(){
         this.classify_thread = this.take_photo_and_classify_async(delayInMS);
+        synchronized(pauseLock) {
+            this.paused = false;
+        }
+    }
+
+    public void stop_take_photo_and_classify(){
+        this.classify_thread.interrupt();
         synchronized(pauseLock) {
             this.paused = false;
         }
@@ -127,35 +172,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                                         Log.e(TAG, "error from aesthetics application interface start preview");
                                     e.printStackTrace();
                                 }
-                                // decode at low resolution to save time
-                                BitmapFactory.Options opt = new BitmapFactory.Options();
-                                opt.outHeight = 224;
-                                opt.outWidth = 224;
-                                opt.inSampleSize = 4;
-                                Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, opt);
-
-                                // center crop to get it square
-                                Bitmap croppedBitmap;
-                                if(bitmap.getHeight() > bitmap.getWidth()) {
-                                    croppedBitmap = Bitmap.createBitmap(bitmap,
-                                            0,
-                                            (int) ((bitmap.getHeight() / 2) - (bitmap.getWidth() / 2)),
-                                            bitmap.getWidth(),
-                                            bitmap.getWidth());
-                                }else{
-                                    croppedBitmap = Bitmap.createBitmap(bitmap,
-                                            (int) ((bitmap.getWidth() / 2) - (bitmap.getHeight() / 2)),
-                                            0,
-                                            bitmap.getHeight(),
-                                            bitmap.getHeight());
-                                }
-                                // downsample to 224
-                                Bitmap resizedBitmap = Bitmap.createScaledBitmap(
-                                        croppedBitmap,
-                                        224,
-                                        224,
-                                        false
-                                );
+                                Bitmap resizedBitmap = decode_small_bitmap(data);
 
                                 final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
                                         resizedBitmap,
@@ -163,21 +180,9 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                                         new float[] {1.0f, 1.0f, 1.0f},
                                         MemoryFormat.CHANNELS_LAST);
                                 float value = classify(inputTensor)[0];
-                                // searching for the index with maximum score
-                            /*float maxScore = -Float.MAX_VALUE;
-                            int maxScoreIdx = -1;
-                            for (int i = 0; i < scores.length; i++) {
-                                if (scores[i] > maxScore) {
-                                    maxScore = scores[i];
-                                    maxScoreIdx = i;
-                                }
-                            }
-                            String className = ImageNetClasses.IMAGENET_CLASSES[maxScoreIdx];
-                            show_imagenet = true;
-                            imagenet_text = "Class: " + className + " Score: " + Float.toString(maxScore);
-                            */
-                                show_imagenet = true;
-                                imagenet_text = "Quality: " + Double.toString((double) Math.round(value * 10000d) / 10000d);
+
+                                show_message = true;
+                                message_text = "Quality: " + Double.toString((double) Math.round(value * 10000d) / 10000d);
                                 drawAestheticsIndicator.draw(value);
                                 this.onCompleted();
                             }
@@ -293,7 +298,37 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         return thread;
     }
 
+    public boolean onBurstPictureTaken(List<byte []> images, Date current_date) {
+        if( MyDebug.LOG )
+            Log.d(TAG, "onBurstPictureTaken: received " + images.size() + " images");
 
+        boolean success;
+
+        double max_quality = 0;
+        int max_quality_ind = -1;
+        Bitmap bmp;
+        Tensor inputTensor;
+        for(int i = 0; i < images.size(); i++){
+            bmp = decode_small_bitmap(images.get(i));
+            inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
+                    bmp,
+                    new float[] {0.0f, 0.0f, 0.0f},
+                    new float[] {1.0f, 1.0f, 1.0f},
+                    MemoryFormat.CHANNELS_LAST);
+            float value = classify(inputTensor)[0];
+            if (value > max_quality){
+                max_quality = value;
+                max_quality_ind = i;
+            }
+        }
+        show_message = true;
+        message_text = "Saving image: " + Integer.toString(max_quality_ind + 1);
+        List<byte []> save_images = new ArrayList<>();
+        save_images.add(images.get(max_quality_ind));
+
+        success = saveImage(true, save_images, current_date);
+        return success;
+    }
 
     @Override
     public boolean onPictureTaken(byte [] data, Date current_date) {
@@ -304,10 +339,6 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         n_capture_images++;
         if( MyDebug.LOG )
             Log.d(TAG, "n_capture_images is now " + n_capture_images);
-
-        long start_time = System.currentTimeMillis();
-
-        Bitmap bitmap = BitmapFactory.decodeByteArray(data , 0, data.length);
 
         List<byte []> images = new ArrayList<>();
         images.add(data);
@@ -335,6 +366,29 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                 os.flush();
             }
             return file.getAbsolutePath();
+        }
+    }
+
+    public boolean isAestheticsMode(){
+        return this.sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false);
+    }
+
+    public int getBurstNImages(){
+        if(this.isAestheticsMode()){
+            return 1;
+        } else{
+            String n_images_value = sharedPreferences.getString(PreferenceKeys.FastBurstNImagesPreferenceKey, "5");
+            int n_images;
+            try {
+                n_images = Integer.parseInt(n_images_value);
+            }
+            catch(NumberFormatException e) {
+                if( MyDebug.LOG )
+                    Log.e(TAG, "failed to parse FastBurstNImagesPreferenceKey value: " + n_images_value);
+                e.printStackTrace();
+                n_images = 5;
+            }
+            return n_images;
         }
     }
 
