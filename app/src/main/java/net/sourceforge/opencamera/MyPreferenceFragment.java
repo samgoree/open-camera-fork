@@ -46,6 +46,9 @@ import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
+import android.widget.RelativeLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -1650,9 +1653,19 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
                     if(newValue.equals(true)) {
                         // hide the shutter button
                         takePhotoButton.setVisibility(View.GONE); //totally invisible
-                        takePhotoButton.setClickable(false);
+                        takePhotoButton.setEnabled(false);
                         // reveal the aestheticsIndicator canvas in the same location
                         aestheticsIndicator.setVisibility(View.VISIBLE);
+
+                        /*RelativeLayout previewContainer = main_activity.findViewById(R.id.previewContainer);
+                        FrameLayout preview = main_activity.findViewById(R.id.preview);
+                        RelativeLayout galleryContainer = main_activity.findViewById(R.id.gallery_container);
+                        ImageButton gallery = main_activity.findViewById(R.id.gallery);
+
+                        galleryContainer.removeView(gallery);
+                        previewContainer.addView(gallery);
+                        previewContainer.removeView(preview);
+                        galleryContainer.addView(preview);*/
 
                         aai.start_take_photo_and_classify();
                     } else {
@@ -1662,9 +1675,31 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
                         aestheticsIndicator.setVisibility(View.GONE);
                         // reveal the shutter button
                         takePhotoButton.setVisibility(View.VISIBLE);
-                        takePhotoButton.setClickable(true);
+                        takePhotoButton.setEnabled(true);
                         aai.show_message = false;
+
+                        /*RelativeLayout previewContainer = main_activity.findViewById(R.id.previewContainer);
+                        FrameLayout preview = main_activity.findViewById(R.id.preview);
+                        RelativeLayout galleryContainer = main_activity.findViewById(R.id.gallery_container);
+                        ImageButton gallery = main_activity.findViewById(R.id.gallery);
+
+                        galleryContainer.removeView(preview);
+                        previewContainer.addView(preview);
+                        previewContainer.removeView(gallery);
+                        galleryContainer.addView(gallery);*/
                     }
+                    return true;
+                }
+            });
+        }
+        {
+            final Preference pref = (Preference)findPreference(PreferenceKeys.AestheticsModelKey);
+            pref.setOnPreferenceChangeListener(new OnPreferenceChangeListener() {
+                @Override
+                public boolean onPreferenceChange(Preference arg0, Object newValue) {
+                    MainActivity main_activity = (MainActivity)MyPreferenceFragment.this.getActivity();
+                    AestheticsApplicationInterface aai = (AestheticsApplicationInterface)main_activity.getApplicationInterface();
+                    aai.setModel((String) newValue);
                     return true;
                 }
             });
@@ -1672,6 +1707,7 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
 
         setupDependencies();
     }
+
 
     /** Adds a TextView to an AlertDialog builder, placing it inside a scrollview and adding appropriate padding.
      */

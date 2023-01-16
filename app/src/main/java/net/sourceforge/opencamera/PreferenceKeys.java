@@ -5,7 +5,11 @@ package net.sourceforge.opencamera;
 public class PreferenceKeys {
     // must be static, to safely call from other Activities
 
+    //whether we're in aesthetics mode (no shutter button)
     public static final String AestheticsModeKey = "preference_aesthetics_mode";
+
+    // which model we should use in both normal or aesthetics mode
+    public static final String AestheticsModelKey = "preference_aesthetics_model";
 
     /** If this preference is set, no longer show the intro dialog.
      */

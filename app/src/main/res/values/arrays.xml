@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string-array name="aesthetics_model_names">
+        <item>Blur Sensor</item>
+        <item>Ke Aesthetics</item>
+        <item>Test Model</item>
+        <item>Lu Aesthetics</item>
+    </string-array>
+    <string-array name="aesthetics_model_files">
+        <item>blur.pt</item>
+        <item>classical.pt</item>
+        <item>test.pt</item>
+        <item>deep.pt</item>
+    </string-array>
     <string-array name="focus_mode_icons">
         <item>drawable/focus_mode_auto</item>
         <item>drawable/focus_mode_infinity</item>

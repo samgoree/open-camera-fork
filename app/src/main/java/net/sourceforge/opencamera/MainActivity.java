@@ -93,7 +93,9 @@ import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.ZoomControls;
@@ -656,6 +658,15 @@ public class MainActivity extends AppCompatActivity {
         if(sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false)) {
             AestheticsApplicationInterface aai = (AestheticsApplicationInterface)this.applicationInterface;
             aai.start_take_photo_and_classify();
+            /*RelativeLayout previewContainer = this.findViewById(R.id.previewContainer);
+            FrameLayout preview = this.findViewById(R.id.preview);
+            RelativeLayout galleryContainer = this.findViewById(R.id.gallery_container);
+            ImageButton gallery = this.findViewById(R.id.gallery);
+
+            galleryContainer.removeView(gallery);
+            previewContainer.addView(gallery);
+            previewContainer.removeView(preview);
+            galleryContainer.addView(preview);*/
         }
 
         // create notification channel - only needed on Android 8+
@@ -2514,6 +2525,13 @@ public class MainActivity extends AppCompatActivity {
         preview.cancelRepeat(); // similarly cancel the auto-repeat mode!
         preview.stopVideo(false); // important to stop video, as we'll be changing camera parameters when the settings window closes
         applicationInterface.stopPanorama(true); // important to stop panorama recording, as we might end up as we'll be changing camera parameters when the settings window closes
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        if(applicationInterface instanceof AestheticsApplicationInterface
+                && sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false) ){
+            AestheticsApplicationInterface aai = (AestheticsApplicationInterface) applicationInterface;
+            aai.pause_take_photo_and_classify();
+        }
         stopAudioListeners();
 
         Bundle bundle = new Bundle();
@@ -3074,6 +3092,12 @@ public class MainActivity extends AppCompatActivity {
                 // sync (e.g., changing the Repeat Mode)
                 mainUI.destroyPopup();
             }
+        }
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        if(applicationInterface instanceof AestheticsApplicationInterface
+                && sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false) ){
+            AestheticsApplicationInterface aai = (AestheticsApplicationInterface) applicationInterface;
+            aai.resume_take_photo_and_classify();
         }
     }
 
@@ -4202,6 +4226,7 @@ public class MainActivity extends AppCompatActivity {
     /** Listens for the response from the Storage Access Framework dialog to select a folder
      *  (as opened with openFolderChooserDialogSAF()).
      */
+    @SuppressLint("WrongConstant")
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public void onActivityResult(int requestCode, int resultCode, Intent resultData) {
         if( MyDebug.LOG )
