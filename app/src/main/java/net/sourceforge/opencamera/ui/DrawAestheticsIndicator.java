@@ -1,35 +1,121 @@
 package net.sourceforge.opencamera.ui;
 
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.Shader;
 import android.view.SurfaceHolder;
+import android.view.View;
 
 import net.sourceforge.opencamera.AestheticsApplicationInterface;
+import net.sourceforge.opencamera.AestheticsGraph;
 import net.sourceforge.opencamera.AestheticsIndicator;
 import net.sourceforge.opencamera.MainActivity;
 import net.sourceforge.opencamera.MyApplicationInterface;
+
+import java.util.Queue;
 
 public class DrawAestheticsIndicator {
     MainActivity mainActivity;
     AestheticsApplicationInterface applicationInterface;
     AestheticsIndicator aestheticsIndicator;
-    public DrawAestheticsIndicator(MainActivity main_activity, AestheticsApplicationInterface application_interface, AestheticsIndicator ai){
+    AestheticsGraph aestheticsGraph;
+
+    private static float graph_x_min = 0;
+    private float graph_x_max;
+    private static float graph_y_min = 0;
+    private static float graph_y_max = 1;
+
+
+    public DrawAestheticsIndicator(MainActivity main_activity,
+                                   AestheticsApplicationInterface application_interface,
+                                   AestheticsIndicator ai,
+                                   AestheticsGraph ag){
         this.mainActivity = main_activity;
         this.applicationInterface = application_interface;
         this.aestheticsIndicator = ai;
+        this.aestheticsGraph = ag;
+
     }
 
-    public void onDraw(Canvas canvas, double score) {
+    public void drawTrapezoid(Canvas canvas, Paint paint, float x1, float y1, float x2, float y_2left, float y_2right){
+        Path path = new Path();
+        path.moveTo(x1,y1);
+        path.lineTo(x1,y_2left);
+        path.lineTo(x2,y_2right);
+        path.lineTo(x2,y1);
+        path.lineTo(x1,y1);
+        canvas.drawPath(path, paint);
+    }
+
+    public void drawIndicator(Canvas canvas, float score) {
+        canvas.drawARGB(255,0,0,0);
+
         Paint p = new Paint();
-        p.setARGB(255,(int)(-score * 128 + 128),0,(int)(score * 128 + 128));
-        canvas.drawCircle(125,125,(float)(100), p);
+        float area = (score * 100);
+        int circles = (int)(Math.sqrt(area) * 10);
+        for(int i = circles; i > 0; i-= 1) {
+            float fraction = ((float)i / 100);
+            p.setARGB(255, (int) (-fraction * 128 + 128), 0, (int) (fraction * 128 + 128));
+            canvas.drawCircle(125, 125, i, p);
+        }
     }
 
-    public void draw(double score){
-        SurfaceHolder holder = this.applicationInterface.getAestheticsIndicatorView().getHolder();
-        Canvas c = holder.lockCanvas();
-        this.onDraw(c, score);
-        holder.unlockCanvasAndPost(c);
+    private float valueToYCoordinate(float value, Canvas canvas){
+        int size = canvas.getHeight();
+        if(value > graph_y_max) value = graph_y_max;
+        if(value < graph_y_min) value = graph_y_min;
+        // y is inverted, so we subtract the value from y_max to measure how far down we should be
+        return size * (graph_y_max - value) / (graph_y_max - graph_y_min);
+    }
+
+    private float valueToXCoordinate(float value, Canvas canvas){
+        int size = canvas.getWidth();
+        if(value > graph_x_max) value = graph_x_max;
+        if(value < graph_x_min) value = graph_x_min;
+        return size * (value - graph_x_min) / (graph_x_max - graph_x_min);
+    }
+
+    public void drawGraph(Canvas canvas, float[] score, int startPosition){
+        Paint p = new Paint();
+        canvas.drawARGB(255,0,0,0);
+
+        p.setARGB(255,128,128,128);
+        p.setShader(new LinearGradient(0, 0, 0, canvas.getHeight(), Color.argb(255,128,128,128), Color.argb(255,0,0,0), Shader.TileMode.MIRROR));
+
+        this.graph_x_max = score.length;
+        int currentPosition = startPosition;
+        int nextPosition = (startPosition + 1) % score.length;
+        for(int i = 0; i < score.length-1; i++) {
+            currentPosition = nextPosition;
+            nextPosition = (nextPosition + 1) % score.length;
+            if(score[currentPosition] == 10000) continue;
+            drawTrapezoid(canvas, p,
+                    valueToXCoordinate((float)i, canvas),
+                    canvas.getHeight(),
+                    valueToXCoordinate((float)i+1, canvas),
+                    valueToYCoordinate(score[currentPosition], canvas),
+                    valueToYCoordinate(score[nextPosition], canvas));
+        }
+    }
+
+    public void draw(float[] scores, int newestScorePosition){
+        SurfaceHolder holder;
+        Canvas c;
+        if(this.applicationInterface.getAestheticsIndicatorView().getVisibility() == View.VISIBLE) {
+            holder = this.applicationInterface.getAestheticsIndicatorView().getHolder();
+            c = holder.lockCanvas();
+            this.drawIndicator(c, scores[newestScorePosition]);
+            holder.unlockCanvasAndPost(c);
+        }
+        if(this.applicationInterface.getAestheticsGraphView().getVisibility() == View.VISIBLE) {
+            holder = this.applicationInterface.getAestheticsGraphView().getHolder();
+            c = holder.lockCanvas();
+            this.drawGraph(c, scores, newestScorePosition);
+            holder.unlockCanvasAndPost(c);
+        }
     }
 
 }

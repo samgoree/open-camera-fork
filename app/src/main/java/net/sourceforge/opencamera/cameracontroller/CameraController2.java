@@ -1462,6 +1462,7 @@ public class CameraController2 extends CameraController {
                 // or strange behaviour where an old image appears when the user next takes a photo
                 Log.e(TAG, "no picture callback available");
                 Image image = reader.acquireNextImage();
+                if(image == null) return;
                 image.close();
                 return;
             }
@@ -1470,6 +1471,7 @@ public class CameraController2 extends CameraController {
                     Log.d(TAG, "skipping image");
                 skip_next_image = false;
                 Image image = reader.acquireNextImage();
+                if(image == null) return;
                 image.close();
                 return;
             }
@@ -1479,6 +1481,7 @@ public class CameraController2 extends CameraController {
             boolean call_takePhotoCompleted = false;
 
             Image image = reader.acquireNextImage();
+            if(image == null) return;
             if( MyDebug.LOG )
                 Log.d(TAG, "image timestamp: " + image.getTimestamp());
             ByteBuffer buffer = image.getPlanes()[0].getBuffer();
@@ -7236,11 +7239,7 @@ public class CameraController2 extends CameraController {
                     stillBuilder.addTarget(imageReaderRaw.getSurface());
                 n_burst_total = n_burst;
                 n_burst_raw = raw_todo ? n_burst : 0;
-                if(is_aesthetics_mode) {
-                    burst_single_request = false;
-                } else {
-                    burst_single_request = true;
-                }
+                burst_single_request = false;
                 if( MyDebug.LOG )
                     Log.d(TAG, "n_burst: " + n_burst);
 

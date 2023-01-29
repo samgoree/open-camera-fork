@@ -28,10 +28,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import net.sourceforge.opencamera.cameracontroller.CameraController;
 import net.sourceforge.opencamera.cameracontroller.CameraControllerException;
 import net.sourceforge.opencamera.cameracontroller.RawImage;
+import net.sourceforge.opencamera.ui.AestheticsGraphView;
 import net.sourceforge.opencamera.ui.AestheticsIndicatorView;
 import net.sourceforge.opencamera.ui.DrawPreview;
 import net.sourceforge.opencamera.ui.DrawAestheticsIndicator;
@@ -40,11 +43,16 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
 
     private static final String TAG = "AestheticsAppInterface";
 
+
+    public float threshold;
     public boolean show_message = false;
     public String message_text = "";
     public float aesthetics_score = 0;
     private boolean safe_to_take_photo;
-    public static long delayInMS = 500;
+    public static long delayInMS = 1000;
+    public static int rollingAverageLength = 20;
+    private float[] previous_scores;
+    private int previous_scores_position;
 
     private DrawPreview drawPreview;
 
@@ -62,7 +70,9 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
 
 
     private AestheticsIndicator aestheticsIndicator;
+    private AestheticsGraph aestheticsGraph;
     private DrawAestheticsIndicator drawAestheticsIndicator;
+
 
     public AestheticsApplicationInterface(MainActivity main_activity, Bundle savedInstanceState) throws IOException {
         super(main_activity, savedInstanceState);
@@ -70,11 +80,10 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
 
         this.drawPreview = new DrawPreview(main_activity, this);
 
-        ViewGroup takePhotoOrAesthetics = main_activity.findViewById(R.id.take_photo_or_aesthetics);
-
         this.aestheticsIndicator = new AestheticsIndicator( this, this.main_activity);
+        this.aestheticsGraph = new AestheticsGraph(this, this.main_activity);
 
-        this.drawAestheticsIndicator = new DrawAestheticsIndicator(main_activity, this, this.aestheticsIndicator);
+        this.drawAestheticsIndicator = new DrawAestheticsIndicator(main_activity, this, this.aestheticsIndicator, this.aestheticsGraph);
         this.safe_to_take_photo = true;
         this.classify_thread = null;
         this.paused = false;
@@ -84,10 +93,11 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         this.sharedPreferences = PreferenceManager.getDefaultSharedPreferences(main_activity);
         this.setModel(sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt"));
 
-    }
+        this.previous_scores = new float[rollingAverageLength];
+        for(int i=0;i<rollingAverageLength;i++){ this.previous_scores[i] = 10000f; };
+        previous_scores_position = 0;
+        this.threshold = 10000f;
 
-    public DrawAestheticsIndicator getDrawAestheticsIndicator(){
-        return this.drawAestheticsIndicator;
     }
 
     private float[] classify(Tensor inputTensor){
@@ -100,11 +110,11 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         return scores;
     }
 
-    private float[] classify_lu(Tensor inputTensorLocal, Tensor inputTensorGlobal){
+    private float classify_lu(Tensor inputTensorLocal, Tensor inputTensorGlobal){
         final Tensor outputTensor = module.forward(IValue.from(inputTensorLocal), IValue.from(inputTensorGlobal)).toTensor();
         final float[] scores = outputTensor.getDataAsFloatArray();
 
-        return scores;
+        return (float)(Math.exp(scores[1]) / (Math.exp(scores[0]) + Math.exp(scores[1])));
     }
 
     private Bitmap decode_cropped_bitmap(byte[] data){
@@ -168,6 +178,10 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
     }
 
     public void start_take_photo_and_classify(){
+        if(this.classify_thread != null){
+            resume_take_photo_and_classify();
+            return;
+        }
         this.classify_thread = this.take_photo_and_classify_async(delayInMS);
         synchronized(pauseLock) {
             this.paused = false;
@@ -175,9 +189,9 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
     }
 
     public void stop_take_photo_and_classify(){
-        this.classify_thread.interrupt();
+        if(this.classify_thread != null) this.classify_thread.interrupt();
         synchronized(pauseLock) {
-            this.paused = false;
+            this.paused = true;
         }
     }
 
@@ -186,8 +200,12 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
             this.paused = true;
         }
     }
-    public void resume_take_photo_and_classify(){
-        synchronized (pauseLock){
+    public void resume_take_photo_and_classify() {
+        if(this.classify_thread == null){
+            start_take_photo_and_classify();
+            return;
+        }
+        synchronized (pauseLock) {
             this.paused = false;
             pauseLock.notifyAll();
         }
@@ -199,135 +217,152 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
             public void run() {
 
                 while (true) {
-                    CameraController camera = main_activity.getPreview().getCameraController();
-                    if (camera != null) {
-                        camera.enableShutterSound(false);
-                        CameraController.PictureCallback jpeg = new CameraController.PictureCallback() {
-                            public void onPictureTaken(byte[] data) {
+                    if(main_activity.getPreview() != null) {
+                        CameraController camera = main_activity.getPreview().getCameraController();
+                        if (camera != null) {
+                            camera.enableShutterSound(false);
+                            CameraController.PictureCallback jpeg = new CameraController.PictureCallback() {
+                                public void onPictureTaken(byte[] data) {
 
-                                float value = 0;
+                                    float value = 0;
 
-                                if(sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt").equals("deep.pt")){
-                                    Bitmap bitmap_g = decode_small_bitmap(data);
-                                    Bitmap bitmap_l = decode_cropped_bitmap(data);
-                                    final Tensor inputTensor_g = TensorImageUtils.bitmapToFloat32Tensor(
-                                            bitmap_g,
-                                            new float[]{0.0f, 0.0f, 0.0f},
-                                            new float[]{1.0f, 1.0f, 1.0f},
-                                            MemoryFormat.CHANNELS_LAST);
-                                    final Tensor inputTensor_l = TensorImageUtils.bitmapToFloat32Tensor(
-                                            bitmap_l,
-                                            new float[]{0.0f, 0.0f, 0.0f},
-                                            new float[]{1.0f, 1.0f, 1.0f},
-                                            MemoryFormat.CHANNELS_LAST);
-                                    value = classify_lu(inputTensor_l, inputTensor_g)[1];
-                                } else {
-                                    Bitmap resizedBitmap = decode_small_bitmap(data);
-                                    final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
-                                            resizedBitmap,
-                                            new float[]{0.0f, 0.0f, 0.0f},
-                                            new float[]{1.0f, 1.0f, 1.0f},
-                                            MemoryFormat.CHANNELS_LAST);
-                                    value = classify(inputTensor)[0];
-                                }
+                                    if (sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt").equals("deep.pt")) {
+                                        Bitmap bitmap_g = decode_small_bitmap(data);
+                                        Bitmap bitmap_l = decode_cropped_bitmap(data);
+                                        final Tensor inputTensor_g = TensorImageUtils.bitmapToFloat32Tensor(
+                                                bitmap_g,
+                                                new float[]{0.42858347f, 0.38953418f, 0.34951788f},
+                                                new float[]{0.19035769f, 0.18192622f, 0.19754064f},
+                                                MemoryFormat.CHANNELS_LAST);
+                                        final Tensor inputTensor_l = TensorImageUtils.bitmapToFloat32Tensor(
+                                                bitmap_l,
+                                                new float[]{0.42858347f, 0.38953418f, 0.34951788f},
+                                                new float[]{0.19035769f, 0.18192622f, 0.19754064f},
+                                                MemoryFormat.CHANNELS_LAST);
+                                        value = classify_lu(inputTensor_l, inputTensor_g);
+                                    } else {
+                                        Bitmap resizedBitmap = decode_small_bitmap(data);
+                                        final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
+                                                resizedBitmap,
+                                                new float[]{0.0f, 0.0f, 0.0f},
+                                                new float[]{1.0f, 1.0f, 1.0f},
+                                                MemoryFormat.CHANNELS_LAST);
+                                        value = classify(inputTensor)[0];
+                                    }
 
-                                show_message = true;
-                                message_text = "Quality: " + Double.toString((double) Math.round(value * 10000d) / 10000d);
-                                drawAestheticsIndicator.draw(value);
+                                    show_message = true;
+                                    message_text = "Quality: " + Double.toString((double) Math.round(value * 10000d) / 10000d);
+
+                                    // if we have a good photo and we're in aesthetics capture mode
+                                    if (value > (threshold + threshold * 0.5) && sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false)) {
+                                        List<byte[]> images = new ArrayList<>();
+                                        images.add(data);
+                                        saveImage(false, images, new Date());
+                                    }
+                                    float removedValue = previous_scores[previous_scores_position];
+                                    threshold -= removedValue / rollingAverageLength;
+                                    threshold += value / rollingAverageLength;
+                                    previous_scores[previous_scores_position] = value;
+                                    drawAestheticsIndicator.draw(previous_scores, previous_scores_position);
+                                    previous_scores_position = (previous_scores_position + 1) % rollingAverageLength;
+                                    if (MyDebug.LOG)
+                                        Log.d(TAG, "Value:" + Float.toString(value) + " threshold:" + Float.toString(threshold));
                                 /*BitmapFactory.Options opt = new BitmapFactory.Options();
                                 opt.inSampleSize = 2;
                                 Bitmap thumbnail = BitmapFactory.decodeByteArray(data, 0, data.length, opt);
 
                                 updateThumbnail(thumbnail, false);*/
-                                this.onCompleted();
-                            }
+                                    this.onCompleted();
+                                }
 
-                            public void onStarted() {
-                                if (MyDebug.LOG)
-                                    Log.d(TAG, "aesthetetics application interface onStarted");
-                            } // called immediately before we start capturing the picture
+                                public void onStarted() {
+                                    if (MyDebug.LOG)
+                                        Log.d(TAG, "aesthetetics application interface onStarted");
+                                } // called immediately before we start capturing the picture
 
-                            public void onCompleted() {
-                                synchronized (takePhotoLock) {
+                                public void onCompleted() {
+                                    synchronized (takePhotoLock) {
+                                        safe_to_take_photo = true;
+                                        takePhotoLock.notifyAll();
+                                    }
+                                    if (MyDebug.LOG)
+                                        Log.d(TAG, "aesthetetics application interface onCompleted");
+                                }
+
+                                public void onRawPictureTaken(RawImage raw_image) {
+                                    if (MyDebug.LOG)
+                                        Log.d(TAG, "aesthetetics application interface onRawPictureTaken");
+                                }
+
+                                /**
+                                 * Only called if burst is requested.
+                                 */
+                                public void onBurstPictureTaken(List<byte[]> images) {
+                                    if (MyDebug.LOG)
+                                        Log.d(TAG, "aesthetetics application interface onBurstPictureTaken");
+                                }
+
+                                /**
+                                 * Only called if burst is requested.
+                                 */
+                                public void onRawBurstPictureTaken(List<RawImage> raw_images) {
+                                    if (MyDebug.LOG)
+                                        Log.d(TAG, "aesthetetics application interface onRawBurstPictureTaken");
+                                }
+
+                                /* This is called for flash_frontscreen_auto or flash_frontscreen_on mode to indicate the caller should light up the screen
+                                 * (for flash_frontscreen_auto it will only be called if the scene is considered dark enough to require the screen flash).
+                                 * The screen flash can be removed when or after onCompleted() is called.
+                                 */
+                                /* This is called for when burst mode is BURSTTYPE_FOCUS or BURSTTYPE_CONTINUOUS, to ask whether it's safe to take
+                                 * n_raw extra RAW images and n_jpegs extra JPEG images, or whether to wait.
+                                 */
+                                public boolean imageQueueWouldBlock(int n_raw, int n_jpegs) {
+                                    if (MyDebug.LOG)
+                                        Log.d(TAG, "aesthetetics application interface imageQueueWouldBlock");
+                                    return false;
+                                }
+
+                                public void onFrontScreenTurnOn() {
+                                    synchronized (takePhotoLock) {
+                                        safe_to_take_photo = true;
+                                        takePhotoLock.notifyAll();
+                                    }
+                                    if (MyDebug.LOG)
+                                        Log.d(TAG, "aesthetetics application interface onFrontScreenTurnOn");
+                                }
+                            };
+                            CameraController.ErrorCallback err = new CameraController.ErrorCallback() {
+                                public void onError() {
+                                    synchronized (takePhotoLock) {
+                                        safe_to_take_photo = true;
+                                        takePhotoLock.notifyAll();
+                                    }
+                                    if (MyDebug.LOG)
+                                        Log.e(TAG, "error from aesthetics application interface takePicture");
+                                }
+                            };
+                            synchronized (takePhotoLock) {
+
+                                try {
+                                    while (!safe_to_take_photo) {
+                                        takePhotoLock.wait();
+                                    }
+                                } catch (InterruptedException e) {
+                                    continue;
+                                }
+                                safe_to_take_photo = false;
+                                try {
+                                    camera.takePicture(jpeg, err);
+
+                                } catch (RuntimeException e) {
+                                    if (MyDebug.LOG) Log.e(TAG, "runtime exception in takePicture");
+                                    e.printStackTrace();
                                     safe_to_take_photo = true;
                                     takePhotoLock.notifyAll();
                                 }
-                                if (MyDebug.LOG)
-                                    Log.d(TAG, "aesthetetics application interface onCompleted");
-                            }
 
-                            public void onRawPictureTaken(RawImage raw_image) {
-                                if (MyDebug.LOG)
-                                    Log.d(TAG, "aesthetetics application interface onRawPictureTaken");
                             }
-
-                            /**
-                             * Only called if burst is requested.
-                             */
-                            public void onBurstPictureTaken(List<byte[]> images) {
-                                if (MyDebug.LOG)
-                                    Log.d(TAG, "aesthetetics application interface onBurstPictureTaken");
-                            }
-
-                            /**
-                             * Only called if burst is requested.
-                             */
-                            public void onRawBurstPictureTaken(List<RawImage> raw_images) {
-                                if (MyDebug.LOG)
-                                    Log.d(TAG, "aesthetetics application interface onRawBurstPictureTaken");
-                            }
-
-                            /* This is called for flash_frontscreen_auto or flash_frontscreen_on mode to indicate the caller should light up the screen
-                             * (for flash_frontscreen_auto it will only be called if the scene is considered dark enough to require the screen flash).
-                             * The screen flash can be removed when or after onCompleted() is called.
-                             */
-                            /* This is called for when burst mode is BURSTTYPE_FOCUS or BURSTTYPE_CONTINUOUS, to ask whether it's safe to take
-                             * n_raw extra RAW images and n_jpegs extra JPEG images, or whether to wait.
-                             */
-                            public boolean imageQueueWouldBlock(int n_raw, int n_jpegs) {
-                                if (MyDebug.LOG)
-                                    Log.d(TAG, "aesthetetics application interface imageQueueWouldBlock");
-                                return false;
-                            }
-
-                            public void onFrontScreenTurnOn() {
-                                synchronized(takePhotoLock) {
-                                    safe_to_take_photo = true;
-                                    takePhotoLock.notifyAll();
-                                }
-                                if (MyDebug.LOG)
-                                    Log.d(TAG, "aesthetetics application interface onFrontScreenTurnOn");
-                            }
-                        };
-                        CameraController.ErrorCallback err = new CameraController.ErrorCallback() {
-                            public void onError() {
-                                synchronized(takePhotoLock) {
-                                    safe_to_take_photo = true;
-                                    takePhotoLock.notifyAll();
-                                }
-                                if (MyDebug.LOG)
-                                    Log.e(TAG, "error from aesthetics application interface takePicture");
-                            }
-                        };
-                        synchronized (takePhotoLock) {
-
-                            try {
-                                while (!safe_to_take_photo) {
-                                    takePhotoLock.wait();
-                                }
-                            } catch (InterruptedException e) {
-                            }
-                            safe_to_take_photo = false;
-                            try {
-                                camera.takePicture(jpeg, err);
-
-                            } catch (RuntimeException e) {
-                                if (MyDebug.LOG) Log.e(TAG, "runtime exception in takePicture");
-                                e.printStackTrace();
-                                safe_to_take_photo = true;
-                                takePhotoLock.notifyAll();
-                            }
-
                         }
                     }
                     try {
@@ -428,25 +463,6 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         return this.sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false);
     }
 
-    public int getBurstNImages(){
-        if(this.isAestheticsMode()){
-            return 1;
-        } else{
-            String n_images_value = sharedPreferences.getString(PreferenceKeys.FastBurstNImagesPreferenceKey, "5");
-            int n_images;
-            try {
-                n_images = Integer.parseInt(n_images_value);
-            }
-            catch(NumberFormatException e) {
-                if( MyDebug.LOG )
-                    Log.e(TAG, "failed to parse FastBurstNImagesPreferenceKey value: " + n_images_value);
-                e.printStackTrace();
-                n_images = 5;
-            }
-            return n_images;
-        }
-    }
-
     public void setModel(String newModelPath){
         pause_take_photo_and_classify();
         try {
@@ -458,4 +474,5 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
     }
 
     public AestheticsIndicatorView getAestheticsIndicatorView(){ return this.aestheticsIndicator.getSurface();}
+    public AestheticsGraphView getAestheticsGraphView(){ return this.aestheticsGraph.getSurface();}
 }

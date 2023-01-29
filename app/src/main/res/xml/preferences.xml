@@ -71,15 +71,22 @@
         <!--  if we move this to another PreferenceGroup, we should update code for the findPreference() call -->
         <SwitchPreference
             android:key="preference_aesthetics_mode"
-            android:title="Aesthetics Sensor Mode"
-            android:summary="Use an experimental aesthetics sensor to take photos"
+            android:title="Aesthetics Capture Mode"
+            android:summary="Instead of using the shutter button, use an aesthetic sensor to capture photos."
+            android:defaultValue="false"
+            />
+
+        <SwitchPreference
+            android:key="preference_aesthetics_indicator"
+            android:title="Aesthetics Indicator Mode"
+            android:summary="Show the value of the aesthetics sensor in a graph."
             android:defaultValue="false"
             />
 
         <ListPreference
             android:key="preference_aesthetics_model"
             android:title="Aesthetics AI Sensor"
-            android:summary="Choose the sensor model for aesthetics sensor mode."
+            android:summary="Choose the aesthetics sensor AI model."
             android:entries="@array/aesthetics_model_names"
             android:entryValues="@array/aesthetics_model_files"
             android:defaultValue="blur.pt"

@@ -37,8 +37,24 @@
         android:layout_height="wrap_content"
         android:layout_centerInParent="true"
         />
-    
 
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true">
+        <net.sourceforge.opencamera.ui.AestheticsGraphView
+            android:id="@+id/indicator_graph"
+            android:layout_centerInParent="true"
+            android:layout_width="180dp"
+            android:layout_height="30dp"
+            android:paddingLeft="15dp"
+            android:paddingRight="15dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:visibility="gone"
+            android:contentDescription="shows the aesthetics rating over time"
+            />
+    </FrameLayout>
 
     <ImageButton
         android:id="@+id/switch_camera"

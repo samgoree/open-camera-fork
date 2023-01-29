@@ -566,6 +566,29 @@ public class MainUI {
 
             // end icon panel
 
+            view = (View)main_activity.findViewById(R.id.indicator_graph).getParent();
+            layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
+            layoutParams.addRule(align_parent_left, 0);
+            layoutParams.addRule(align_parent_right, 0);
+            layoutParams.addRule(align_parent_top, 0);
+            layoutParams.addRule(align_parent_bottom, 0);
+            layoutParams.addRule(ui_independent_below, 0);
+            layoutParams.addRule(ui_independent_above, 0);
+            layoutParams.addRule(ui_independent_left_of, R.id.take_photo_or_aesthetics);
+            layoutParams.addRule(ui_independent_right_of, R.id.preview);
+            layoutParams.addRule(center_vertical, RelativeLayout.TRUE);
+            layoutParams.addRule(center_horizontal, RelativeLayout.TRUE);
+            setMarginsForSystemUI(layoutParams, 0, 0, navigation_gap, 0);
+            view.setLayoutParams(layoutParams);
+            //setViewRotation(view, ui_rotation);
+
+            AestheticsApplicationInterface aai = (AestheticsApplicationInterface) main_activity.getApplicationInterface();
+            view = aai.getAestheticsGraphView();
+            view.setVisibility(
+                    sharedPreferences.getBoolean("preference_aesthetics_indicator", false)
+                            ? View.VISIBLE : View.GONE
+            );
+
             view = main_activity.findViewById(R.id.take_photo_or_aesthetics);
             layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
             layoutParams.addRule(align_parent_left, 0);
@@ -587,7 +610,7 @@ public class MainUI {
             );
             view.setClickable(!sharedPreferences.getBoolean("preference_aesthetics_mode", false));
 
-            AestheticsApplicationInterface aai = (AestheticsApplicationInterface) main_activity.getApplicationInterface();
+            aai = (AestheticsApplicationInterface) main_activity.getApplicationInterface();
             view = aai.getAestheticsIndicatorView();
             view.setVisibility(
                     sharedPreferences.getBoolean("preference_aesthetics_mode", false)
