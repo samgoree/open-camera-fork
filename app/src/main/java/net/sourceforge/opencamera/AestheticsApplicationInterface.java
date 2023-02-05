@@ -2,6 +2,10 @@ package net.sourceforge.opencamera;
 
 import android.content.SharedPreferences;
 import android.graphics.BitmapRegionDecoder;
+import android.graphics.Canvas;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -10,6 +14,7 @@ import android.util.Log;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.view.Surface;
 import android.view.ViewGroup;
 
 import org.pytorch.IValue;
@@ -93,25 +98,77 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         this.sharedPreferences = PreferenceManager.getDefaultSharedPreferences(main_activity);
         this.setModel(sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt"));
 
+        this.initialize_scores();
+
+    }
+
+    private void initialize_scores(){
         this.previous_scores = new float[rollingAverageLength];
         for(int i=0;i<rollingAverageLength;i++){ this.previous_scores[i] = 10000f; };
         previous_scores_position = 0;
         this.threshold = 10000f;
-
     }
 
-    private float[] classify(Tensor inputTensor){
+    private float classify(byte[] data){
+
+        Bitmap resizedBitmap = decode_small_bitmap(data);
+        final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
+                resizedBitmap,
+                new float[]{0.0f, 0.0f, 0.0f},
+                new float[]{1.0f, 1.0f, 1.0f},
+                MemoryFormat.CHANNELS_LAST);
         
         final Tensor outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
 
         // getting tensor content as java array of floats
         final float[] scores = outputTensor.getDataAsFloatArray();
 
-        return scores;
+        return scores[0];
     }
 
-    private float classify_lu(Tensor inputTensorLocal, Tensor inputTensorGlobal){
-        final Tensor outputTensor = module.forward(IValue.from(inputTensorLocal), IValue.from(inputTensorGlobal)).toTensor();
+    private float classify_lu(byte[] data){
+
+        Bitmap bitmap_g = decode_small_bitmap(data);
+        Bitmap bitmap_l = decode_cropped_bitmap(data);
+        final Tensor inputTensor_g = TensorImageUtils.bitmapToFloat32Tensor(
+                bitmap_g,
+                new float[]{0.42858347f, 0.38953418f, 0.34951788f},
+                new float[]{0.19035769f, 0.18192622f, 0.19754064f},
+                MemoryFormat.CHANNELS_LAST);
+        final Tensor inputTensor_l = TensorImageUtils.bitmapToFloat32Tensor(
+                bitmap_l,
+                new float[]{0.42858347f, 0.38953418f, 0.34951788f},
+                new float[]{0.19035769f, 0.18192622f, 0.19754064f},
+                MemoryFormat.CHANNELS_LAST);
+
+        final Tensor outputTensor = module.forward(IValue.from(inputTensor_l), IValue.from(inputTensor_g)).toTensor();
+        final float[] scores = outputTensor.getDataAsFloatArray();
+
+        return (float)(Math.exp(scores[1]) / (Math.exp(scores[0]) + Math.exp(scores[1])));
+    }
+
+    private float classify_sheng(byte[] data){
+        Bitmap bitmap = decode_cropped_bitmap(data);
+
+        //change RGB to BGR
+        Paint paint = new Paint();
+        ColorMatrixColorFilter cmcf = new ColorMatrixColorFilter(
+                new float[]{0, 0, 1, 0, 0,
+                            0, 1, 0, 0, 0,
+                            1, 0, 0, 0, 0,
+                            0, 0, 0, 1, 0}
+        );
+        paint.setColorFilter(cmcf);
+        Canvas drawable = new Canvas(bitmap);
+        drawable.drawBitmap(bitmap,0,0, paint);
+
+        final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
+                bitmap,
+                new float[]{0.406f, 0.456f, 0.485f},
+                new float[]{0.225f, 0.224f, 0.229f},
+                MemoryFormat.CHANNELS_LAST);
+
+        final Tensor outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
         final float[] scores = outputTensor.getDataAsFloatArray();
 
         return (float)(Math.exp(scores[1]) / (Math.exp(scores[0]) + Math.exp(scores[1])));
@@ -121,7 +178,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         BitmapFactory.Options opt = new BitmapFactory.Options();
         opt.outHeight = 224;
         opt.outWidth = 224;
-        opt.inSampleSize = 2;
+        opt.inSampleSize = 8;
         BitmapRegionDecoder decoder;
         try {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
@@ -141,31 +198,45 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         int top = Math.max(0, height / 2 - (opt.outHeight * opt.inSampleSize) / 2);
         int bottom = Math.min(height, height / 2 + (opt.outHeight * opt.inSampleSize) / 2);
         Bitmap bitmap = decoder.decodeRegion(new Rect(left,top,right,bottom), opt);
+        //rotate
+        Matrix rotation = new Matrix();
+        int angle = 0;
+        if(main_activity.getDisplayRotation() == Surface.ROTATION_0) angle += 90;
+        else if (main_activity.getDisplayRotation() == Surface.ROTATION_180) angle += 270;
+        else if (main_activity.getDisplayRotation() == Surface.ROTATION_270) angle += 180;
+        rotation.postRotate(angle);
+        bitmap = Bitmap.createBitmap(bitmap,0,0,bitmap.getWidth(), bitmap.getHeight(),rotation,false);
         return bitmap;
     }
 
     private Bitmap decode_small_bitmap(byte[] data){
         // decode at low resolution to save time
         BitmapFactory.Options opt = new BitmapFactory.Options();
-        opt.outHeight = 224;
-        opt.outWidth = 224;
-        opt.inSampleSize = 4;
+        //opt.outHeight = 224;
+        //opt.outWidth = 224;
+        //opt.inSampleSize = 4;
         Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, opt);
 
-        // center crop to get it square
+        // center crop to get it square and rotate
         Bitmap croppedBitmap;
+        Matrix rotation = new Matrix();
+        rotation.postRotate(90);
         if(bitmap.getHeight() > bitmap.getWidth()) {
             croppedBitmap = Bitmap.createBitmap(bitmap,
                     0,
                     (int) ((bitmap.getHeight() / 2) - (bitmap.getWidth() / 2)),
                     bitmap.getWidth(),
-                    bitmap.getWidth());
+                    bitmap.getWidth(),
+                    rotation,
+                    false);
         }else{
             croppedBitmap = Bitmap.createBitmap(bitmap,
                     (int) ((bitmap.getWidth() / 2) - (bitmap.getHeight() / 2)),
                     0,
                     bitmap.getHeight(),
-                    bitmap.getHeight());
+                    bitmap.getHeight(),
+                    rotation,
+                    false);
         }
         // downsample to 224
         Bitmap resizedBitmap = Bitmap.createScaledBitmap(
@@ -178,14 +249,19 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
     }
 
     public void start_take_photo_and_classify(){
-        if(this.classify_thread != null){
+        if(this.classify_thread != null && this.classify_thread.isAlive()){
             resume_take_photo_and_classify();
             return;
         }
         this.classify_thread = this.take_photo_and_classify_async(delayInMS);
+        synchronized(takePhotoLock){
+            safe_to_take_photo = true;
+        }
         synchronized(pauseLock) {
             this.paused = false;
+            pauseLock.notifyAll();
         }
+
     }
 
     public void stop_take_photo_and_classify(){
@@ -201,9 +277,11 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         }
     }
     public void resume_take_photo_and_classify() {
-        if(this.classify_thread == null){
+        if(this.classify_thread == null || !this.classify_thread.isAlive()){
             start_take_photo_and_classify();
-            return;
+        }
+        synchronized(takePhotoLock){
+            safe_to_take_photo = true;
         }
         synchronized (pauseLock) {
             this.paused = false;
@@ -227,30 +305,15 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                                     float value = 0;
 
                                     if (sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt").equals("deep.pt")) {
-                                        Bitmap bitmap_g = decode_small_bitmap(data);
-                                        Bitmap bitmap_l = decode_cropped_bitmap(data);
-                                        final Tensor inputTensor_g = TensorImageUtils.bitmapToFloat32Tensor(
-                                                bitmap_g,
-                                                new float[]{0.42858347f, 0.38953418f, 0.34951788f},
-                                                new float[]{0.19035769f, 0.18192622f, 0.19754064f},
-                                                MemoryFormat.CHANNELS_LAST);
-                                        final Tensor inputTensor_l = TensorImageUtils.bitmapToFloat32Tensor(
-                                                bitmap_l,
-                                                new float[]{0.42858347f, 0.38953418f, 0.34951788f},
-                                                new float[]{0.19035769f, 0.18192622f, 0.19754064f},
-                                                MemoryFormat.CHANNELS_LAST);
-                                        value = classify_lu(inputTensor_l, inputTensor_g);
-                                    } else {
-                                        Bitmap resizedBitmap = decode_small_bitmap(data);
-                                        final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
-                                                resizedBitmap,
-                                                new float[]{0.0f, 0.0f, 0.0f},
-                                                new float[]{1.0f, 1.0f, 1.0f},
-                                                MemoryFormat.CHANNELS_LAST);
-                                        value = classify(inputTensor)[0];
+
+                                        value = classify_lu(data);
+                                    } else if (sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt").equals("mpada.pt")) {
+                                        value = classify_sheng(data);
+                                    }else {
+                                        value = classify(data);
                                     }
 
-                                    show_message = true;
+                                    //show_message = true;
                                     message_text = "Quality: " + Double.toString((double) Math.round(value * 10000d) / 10000d);
 
                                     // if we have a good photo and we're in aesthetics capture mode
@@ -267,6 +330,10 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                                     previous_scores_position = (previous_scores_position + 1) % rollingAverageLength;
                                     if (MyDebug.LOG)
                                         Log.d(TAG, "Value:" + Float.toString(value) + " threshold:" + Float.toString(threshold));
+
+                                    List<byte []> images = new ArrayList<>();
+                                    images.add(data);
+                                    saveImageSecondary(true, images, new Date());
                                 /*BitmapFactory.Options opt = new BitmapFactory.Options();
                                 opt.inSampleSize = 2;
                                 Bitmap thumbnail = BitmapFactory.decodeByteArray(data, 0, data.length, opt);
@@ -375,10 +442,12 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                             try {
                                 pauseLock.wait();
                             } catch (InterruptedException e) {
+                                if(MyDebug.LOG) Log.d(TAG, "take_photo_and_classify pause interruped");
+                                return;
                             }
                         }
+                        if(MyDebug.LOG) Log.d(TAG, "pause lock finished");
                     }
-
                 }
 
             }
@@ -399,19 +468,19 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         Bitmap bmp;
         Tensor inputTensor;
         for(int i = 0; i < images.size(); i++){
-            bmp = decode_small_bitmap(images.get(i));
-            inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
-                    bmp,
-                    new float[] {0.0f, 0.0f, 0.0f},
-                    new float[] {1.0f, 1.0f, 1.0f},
-                    MemoryFormat.CHANNELS_LAST);
-            float value = classify(inputTensor)[0];
+            //bmp = decode_small_bitmap(images.get(i));
+            //inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
+            //        bmp,
+            //        new float[] {0.0f, 0.0f, 0.0f},
+            //        new float[] {1.0f, 1.0f, 1.0f},
+            //        MemoryFormat.CHANNELS_LAST);
+            float value = classify(images.get(i));
             if (value > max_quality){
                 max_quality = value;
                 max_quality_ind = i;
             }
         }
-        show_message = true;
+        //show_message = true;
         message_text = "Saving image: " + Integer.toString(max_quality_ind + 1);
         List<byte []> save_images = new ArrayList<>();
         save_images.add(images.get(max_quality_ind));
@@ -464,13 +533,21 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
     }
 
     public void setModel(String newModelPath){
-        pause_take_photo_and_classify();
+        boolean resume;
+        if(classify_thread != null && classify_thread.isAlive()) {
+            pause_take_photo_and_classify();
+            resume = true;
+        } else resume = false;
         try {
             this.module = LiteModuleLoader.load(assetFilePath(this.main_activity, newModelPath));
         } catch (IOException e) {
             e.printStackTrace();
         }
-        resume_take_photo_and_classify();
+        this.initialize_scores();
+        if(resume) {
+            resume_take_photo_and_classify();
+        }
+
     }
 
     public AestheticsIndicatorView getAestheticsIndicatorView(){ return this.aestheticsIndicator.getSurface();}

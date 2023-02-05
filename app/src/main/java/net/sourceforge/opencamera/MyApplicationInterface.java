@@ -3403,7 +3403,8 @@ public class MyApplicationInterface extends BasicApplicationInterface {
                         store_location, location, store_geo_direction, geo_direction,
                         pitch_angle, store_ypr,
                         custom_tag_artist, custom_tag_copyright,
-                        sample_factor);
+                        sample_factor,
+                        false);
 
                 if( photo_mode == PhotoMode.Panorama ) {
                     imageSaver.getImageBatchRequest().camera_view_angle_x = main_activity.getPreview().getViewAngleX(false);
@@ -3448,7 +3449,227 @@ public class MyApplicationInterface extends BasicApplicationInterface {
                     store_location, location, store_geo_direction, geo_direction,
                     pitch_angle, store_ypr,
                     custom_tag_artist, custom_tag_copyright,
-                    sample_factor);
+                    sample_factor,
+                    false);
+        }
+
+        if( MyDebug.LOG )
+            Log.d(TAG, "saveImage complete, success: " + success);
+
+        return success;
+    }
+
+    /** Saves the supplied image(s)
+     * @param save_expo If the photo mode is one where multiple images are saved to a single
+     *                  resultant image, this indicates if all the base images should also be saved
+     *                  as separate images.
+     * @param images The set of images.
+     * @param current_date The current date/time stamp for the images.
+     * @return Whether saving was successful.
+     */
+    public boolean saveImageSecondary(boolean save_expo, List<byte []> images, Date current_date) {
+        if( MyDebug.LOG )
+            Log.d(TAG, "saveImage");
+
+        System.gc();
+
+        boolean image_capture_intent = false;
+
+        boolean using_camera2 = main_activity.getPreview().usingCamera2API();
+        boolean using_camera_extensions = isCameraExtensionPref();
+        ImageSaver.Request.ImageFormat image_format = getImageFormatPref();
+        boolean store_ypr = sharedPreferences.getBoolean(PreferenceKeys.AddYPRToComments, false) &&
+                main_activity.getPreview().hasLevelAngle() &&
+                main_activity.getPreview().hasPitchAngle() &&
+                main_activity.getPreview().hasGeoDirection();
+        if( MyDebug.LOG ) {
+            Log.d(TAG, "store_ypr: " + store_ypr);
+            Log.d(TAG, "has level angle: " + main_activity.getPreview().hasLevelAngle());
+            Log.d(TAG, "has pitch angle: " + main_activity.getPreview().hasPitchAngle());
+            Log.d(TAG, "has geo direction: " + main_activity.getPreview().hasGeoDirection());
+        }
+        int image_quality = getSaveImageQualityPref();
+        if( MyDebug.LOG )
+            Log.d(TAG, "image_quality: " + image_quality);
+        boolean do_auto_stabilise = false;
+        double level_angle = (main_activity.getPreview().hasLevelAngle()) ? main_activity.getPreview().getLevelAngle() : 0.0;
+        double pitch_angle = (main_activity.getPreview().hasPitchAngle()) ? main_activity.getPreview().getPitchAngle() : 0.0;
+        // I have received crashes where camera_controller was null - could perhaps happen if this thread was running just as the camera is closing?
+        boolean is_front_facing = main_activity.getPreview().getCameraController() != null && (main_activity.getPreview().getCameraController().getFacing() == CameraController.Facing.FACING_FRONT);
+        boolean mirror = is_front_facing && sharedPreferences.getString(PreferenceKeys.FrontCameraMirrorKey, "preference_front_camera_mirror_no").equals("preference_front_camera_mirror_photo");
+        String preference_stamp = this.getStampPref();
+        String preference_textstamp = this.getTextStampPref();
+        int font_size = getTextStampFontSizePref();
+        int color = getStampFontColor();
+        String pref_style = sharedPreferences.getString(PreferenceKeys.StampStyleKey, "preference_stamp_style_shadowed");
+        String preference_stamp_dateformat = this.getStampDateFormatPref();
+        String preference_stamp_timeformat = this.getStampTimeFormatPref();
+        String preference_stamp_gpsformat = this.getStampGPSFormatPref();
+        //String preference_stamp_geo_address = this.getStampGeoAddressPref();
+        String preference_units_distance = this.getUnitsDistancePref();
+        boolean panorama_crop = sharedPreferences.getString(PreferenceKeys.PanoramaCropPreferenceKey, "preference_panorama_crop_on").equals("preference_panorama_crop_on");
+        boolean store_location = getGeotaggingPref() && getLocation() != null;
+        Location location = store_location ? getLocation() : null;
+        boolean store_geo_direction = main_activity.getPreview().hasGeoDirection() && getGeodirectionPref();
+        double geo_direction = main_activity.getPreview().hasGeoDirection() ? main_activity.getPreview().getGeoDirection() : 0.0;
+        String custom_tag_artist = sharedPreferences.getString(PreferenceKeys.ExifArtistPreferenceKey, "");
+        String custom_tag_copyright = sharedPreferences.getString(PreferenceKeys.ExifCopyrightPreferenceKey, "");
+        String preference_hdr_contrast_enhancement = sharedPreferences.getString(PreferenceKeys.HDRContrastEnhancementPreferenceKey, "preference_hdr_contrast_enhancement_smart");
+
+        int iso = 800; // default value if we can't get ISO
+        long exposure_time = 1000000000L/30; // default value if we can't get shutter speed
+        float zoom_factor = 1.0f;
+        if( main_activity.getPreview().getCameraController() != null ) {
+            if( main_activity.getPreview().getCameraController().captureResultHasIso() ) {
+                iso = main_activity.getPreview().getCameraController().captureResultIso();
+                if( MyDebug.LOG )
+                    Log.d(TAG, "iso: " + iso);
+            }
+            if( main_activity.getPreview().getCameraController().captureResultHasExposureTime() ) {
+                exposure_time = main_activity.getPreview().getCameraController().captureResultExposureTime();
+                if( MyDebug.LOG )
+                    Log.d(TAG, "exposure_time: " + exposure_time);
+            }
+
+            zoom_factor = main_activity.getPreview().getZoomRatio();
+        }
+
+        boolean has_thumbnail_animation = getThumbnailAnimationPref();
+
+        boolean do_in_background = saveInBackground(image_capture_intent);
+
+        String ghost_image_pref = sharedPreferences.getString(PreferenceKeys.GhostImagePreferenceKey, "preference_ghost_image_off");
+
+        int sample_factor = 1;
+        if( !this.getPausePreviewPref() && !ghost_image_pref.equals("preference_ghost_image_last") ) {
+            // if pausing the preview, we use the thumbnail also for the preview, so don't downsample
+            // similarly for ghosting last image
+            // otherwise, we can downsample by 4 to increase performance, without noticeable loss in visual quality (even for the thumbnail animation)
+            sample_factor *= 4;
+            if( !has_thumbnail_animation ) {
+                // can use even lower resolution if we don't have the thumbnail animation
+                sample_factor *= 4;
+            }
+        }
+        if( MyDebug.LOG )
+            Log.d(TAG, "sample_factor: " + sample_factor);
+
+        boolean success;
+        PhotoMode photo_mode = getPhotoMode();
+        if( main_activity.getPreview().isVideo() ) {
+            if( MyDebug.LOG )
+                Log.d(TAG, "snapshot mode");
+            // must be in photo snapshot while recording video mode, only support standard photo mode
+            photo_mode = PhotoMode.Standard;
+        }
+
+        if( !main_activity.is_test && photo_mode == PhotoMode.Panorama && gyroSensor.isRecording() && gyroSensor.hasTarget() && !gyroSensor.isTargetAchieved() ) {
+            if( MyDebug.LOG )
+                Log.d(TAG, "ignore panorama image as target no longer achieved!");
+            // n.b., gyroSensor.hasTarget() will be false if this is the first picture in the panorama series
+            panorama_pic_accepted = false;
+            success = true; // still treat as success
+        }
+        else if( photo_mode == PhotoMode.NoiseReduction || photo_mode == PhotoMode.Panorama ) {
+            boolean first_image;
+            if( photo_mode == PhotoMode.Panorama ) {
+                panorama_pic_accepted = true;
+                first_image = n_panorama_pics == 0;
+            }
+            else
+                first_image = n_capture_images == 1;
+            if( first_image ) {
+                ImageSaver.Request.SaveBase save_base = ImageSaver.Request.SaveBase.SAVEBASE_NONE;
+                if( photo_mode == PhotoMode.NoiseReduction ) {
+                    String save_base_preference = sharedPreferences.getString(PreferenceKeys.NRSaveExpoPreferenceKey, "preference_nr_save_no");
+                    switch( save_base_preference ) {
+                        case "preference_nr_save_single":
+                            save_base = ImageSaver.Request.SaveBase.SAVEBASE_FIRST;
+                            break;
+                        case "preference_nr_save_all":
+                            save_base = ImageSaver.Request.SaveBase.SAVEBASE_ALL;
+                            break;
+                    }
+                }
+                else if( photo_mode == PhotoMode.Panorama ) {
+                    String save_base_preference = sharedPreferences.getString(PreferenceKeys.PanoramaSaveExpoPreferenceKey, "preference_panorama_save_no");
+                    switch( save_base_preference ) {
+                        case "preference_panorama_save_all":
+                            save_base = ImageSaver.Request.SaveBase.SAVEBASE_ALL;
+                            break;
+                        case "preference_panorama_save_all_plus_debug":
+                            save_base = ImageSaver.Request.SaveBase.SAVEBASE_ALL_PLUS_DEBUG;
+                            break;
+                    }
+                }
+
+                imageSaver.startImageBatch(true,
+                        photo_mode == PhotoMode.NoiseReduction ? ImageSaver.Request.ProcessType.AVERAGE : ImageSaver.Request.ProcessType.PANORAMA,
+                        save_base,
+                        image_capture_intent, null,
+                        using_camera2, using_camera_extensions,
+                        image_format, image_quality,
+                        do_auto_stabilise, level_angle, photo_mode == PhotoMode.Panorama,
+                        is_front_facing,
+                        mirror,
+                        current_date,
+                        iso,
+                        exposure_time,
+                        zoom_factor,
+                        preference_stamp, preference_textstamp, font_size, color, pref_style, preference_stamp_dateformat, preference_stamp_timeformat, preference_stamp_gpsformat,
+                        //preference_stamp_geo_address,
+                        preference_units_distance,
+                        panorama_crop,
+                        store_location, location, store_geo_direction, geo_direction,
+                        pitch_angle, store_ypr,
+                        custom_tag_artist, custom_tag_copyright,
+                        sample_factor,
+                        true);
+
+                if( photo_mode == PhotoMode.Panorama ) {
+                    imageSaver.getImageBatchRequest().camera_view_angle_x = main_activity.getPreview().getViewAngleX(false);
+                    imageSaver.getImageBatchRequest().camera_view_angle_y = main_activity.getPreview().getViewAngleY(false);
+                }
+            }
+
+            float [] gyro_rotation_matrix = null;
+            if( photo_mode == PhotoMode.Panorama ) {
+                gyro_rotation_matrix = new float[9];
+                this.gyroSensor.getRotationMatrix(gyro_rotation_matrix);
+            }
+
+            imageSaver.addImageBatch(images.get(0), gyro_rotation_matrix);
+            success = true;
+        }
+        else {
+            boolean is_hdr = photo_mode == PhotoMode.DRO || photo_mode == PhotoMode.HDR;
+            boolean force_suffix = forceSuffix(photo_mode);
+            success = imageSaver.saveImageJpeg(do_in_background, is_hdr,
+                    force_suffix,
+                    // N.B., n_capture_images will be 1 for first image, not 0, so subtract 1 so we start off from _0.
+                    // (It wouldn't be a huge problem if we did start from _1, but it would be inconsistent with the naming
+                    // of images where images.size() > 1 (e.g., expo bracketing mode) where we also start from _0.)
+                    force_suffix ? (n_capture_images-1) : 0,
+                    save_expo, images,
+                    image_capture_intent, null,
+                    using_camera2, using_camera_extensions,
+                    image_format, image_quality,
+                    do_auto_stabilise, level_angle,
+                    is_front_facing,
+                    mirror,
+                    current_date,
+                    preference_hdr_contrast_enhancement,
+                    iso,
+                    exposure_time,
+                    zoom_factor,
+                    preference_stamp, preference_textstamp, font_size, color, pref_style, preference_stamp_dateformat, preference_stamp_timeformat, preference_stamp_gpsformat,
+                    //preference_stamp_geo_address,
+                    preference_units_distance,
+                    false, // panorama doesn't use this codepath
+                    store_location, location, store_geo_direction, geo_direction,
+                    pitch_angle, store_ypr,
+                    custom_tag_artist, custom_tag_copyright,
+                    sample_factor, true);
         }
 
         if( MyDebug.LOG )

@@ -653,7 +653,8 @@ public class MainActivity extends AppCompatActivity {
         }).start();
 
         // start aesthetics async
-        if(sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false)) {
+        if(sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false)
+           || sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false)) {
             AestheticsApplicationInterface aai = (AestheticsApplicationInterface)this.applicationInterface;
             aai.start_take_photo_and_classify();
             /*RelativeLayout previewContainer = this.findViewById(R.id.previewContainer);
@@ -1525,7 +1526,7 @@ public class MainActivity extends AppCompatActivity {
                 || sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false))
         ){
             AestheticsApplicationInterface aai = (AestheticsApplicationInterface) applicationInterface;
-            aai.pause_take_photo_and_classify();
+            aai.stop_take_photo_and_classify();
         }
 
         if( MyDebug.LOG ) {
@@ -1753,7 +1754,7 @@ public class MainActivity extends AppCompatActivity {
             return getWindowManager().getDefaultDisplay().getRotation();
         }
         // we cache to reduce effect of annoying problem where rotation changes shortly before the
-        // configuration actually changes (several frames), so on-screen elements would briefly show
+        // configuration actually changes (several frames), so on-screen elementtake_photo_ands would briefly show
         // in wrong location when device rotates from/to portrait and landscape; also not a bad idea
         // to cache for performance anyway, to avoid calling
         // getWindowManager().getDefaultDisplay().getRotation() every frame
@@ -2166,14 +2167,11 @@ public class MainActivity extends AppCompatActivity {
         if( MyDebug.LOG )
             Log.d(TAG, "userSwitchToCamera: " + cameraId);
         View switchCameraButton = findViewById(R.id.switch_camera);
-        View switchMultiCameraButton = findViewById(R.id.switch_multi_camera);
         // prevent slowdown if user repeatedly clicks:
         switchCameraButton.setEnabled(false);
-        switchMultiCameraButton.setEnabled(false);
         applicationInterface.reset(true);
         this.preview.setCamera(cameraId);
         switchCameraButton.setEnabled(true);
-        switchMultiCameraButton.setEnabled(true);
         // no need to call mainUI.setSwitchCameraContentDescription - this will be called from Preview.cameraSetup when the
         // new camera is opened
     }
@@ -3037,13 +3035,6 @@ public class MainActivity extends AppCompatActivity {
         }
         if( !mainUI.showFaceDetectionIcon() ) {
             View button = findViewById(R.id.face_detection);
-            changed = changed || (button.getVisibility() != View.GONE);
-            button.setVisibility(View.GONE);
-        }
-        if( !showSwitchMultiCamIcon() ) {
-            // also handle the multi-cam icon here, as this can change when switching between front/back cameras
-            // (e.g., if say a device only has multiple back cameras)
-            View button = findViewById(R.id.switch_multi_camera);
             changed = changed || (button.getVisibility() != View.GONE);
             button.setVisibility(View.GONE);
         }

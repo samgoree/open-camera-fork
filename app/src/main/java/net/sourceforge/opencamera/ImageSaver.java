@@ -129,8 +129,8 @@ public class ImageSaver extends Thread {
          */
         final List<byte []> jpeg_images;
         final RawImage raw_image; // for raw
-        final boolean image_capture_intent;
-        final Uri image_capture_intent_uri;
+        final boolean image_capture_intent; // if we're supposed to save to a specific place for another app
+        final Uri image_capture_intent_uri; // this is where
         final boolean using_camera2;
         final boolean using_camera_extensions;
         /* image_format allows converting the standard JPEG image into another file format.
@@ -175,6 +175,7 @@ public class ImageSaver extends Thread {
         final String custom_tag_artist;
         final String custom_tag_copyright;
         final int sample_factor; // sampling factor for thumbnail, higher means lower quality
+        final boolean save_secondary; //save to a secondary location without making sound or animation
 
         Request(Type type,
                 ProcessType process_type,
@@ -202,7 +203,8 @@ public class ImageSaver extends Thread {
                 double pitch_angle, boolean store_ypr,
                 String custom_tag_artist,
                 String custom_tag_copyright,
-                int sample_factor) {
+                int sample_factor,
+                boolean save_secondary) {
             this.type = type;
             this.process_type = process_type;
             this.force_suffix = force_suffix;
@@ -246,6 +248,7 @@ public class ImageSaver extends Thread {
             this.custom_tag_artist = custom_tag_artist;
             this.custom_tag_copyright = custom_tag_copyright;
             this.sample_factor = sample_factor;
+            this.save_secondary = save_secondary;
         }
 
         /** Returns a copy of this object. Note that it is not a deep copy - data such as JPEG and RAW
@@ -277,7 +280,8 @@ public class ImageSaver extends Thread {
                     this.pitch_angle, this.store_ypr,
                     this.custom_tag_artist,
                     this.custom_tag_copyright,
-                    this.sample_factor);
+                    this.sample_factor,
+                    this.save_secondary);
         }
     }
 
@@ -589,7 +593,8 @@ public class ImageSaver extends Thread {
                           double pitch_angle, boolean store_ypr,
                           String custom_tag_artist,
                           String custom_tag_copyright,
-                          int sample_factor) {
+                          int sample_factor,
+                          boolean save_secondary) {
         if( MyDebug.LOG ) {
             Log.d(TAG, "saveImageJpeg");
             Log.d(TAG, "do_in_background? " + do_in_background);
@@ -621,7 +626,8 @@ public class ImageSaver extends Thread {
                 pitch_angle, store_ypr,
                 custom_tag_artist,
                 custom_tag_copyright,
-                sample_factor);
+                sample_factor,
+                save_secondary);
     }
 
     /** Saves a RAW photo.
@@ -664,7 +670,8 @@ public class ImageSaver extends Thread {
                 false, false, null, false, 0.0,
                 0.0, false,
                 null, null,
-                1);
+                1,
+                false);
     }
 
     private Request pending_image_average_request = null;
@@ -693,7 +700,8 @@ public class ImageSaver extends Thread {
                            double pitch_angle, boolean store_ypr,
                            String custom_tag_artist,
                            String custom_tag_copyright,
-                           int sample_factor) {
+                           int sample_factor,
+                           boolean save_secondary) {
         if( MyDebug.LOG ) {
             Log.d(TAG, "startImageBatch");
             Log.d(TAG, "do_in_background? " + do_in_background);
@@ -723,7 +731,8 @@ public class ImageSaver extends Thread {
                 pitch_angle, store_ypr,
                 custom_tag_artist,
                 custom_tag_copyright,
-                sample_factor);
+                sample_factor,
+                save_secondary);
     }
 
     void addImageBatch(byte [] image, float [] gyro_rotation_matrix) {
@@ -805,7 +814,8 @@ public class ImageSaver extends Thread {
                               double pitch_angle, boolean store_ypr,
                               String custom_tag_artist,
                               String custom_tag_copyright,
-                              int sample_factor) {
+                              int sample_factor,
+                              boolean save_secondary) {
         if( MyDebug.LOG ) {
             Log.d(TAG, "saveImage");
             Log.d(TAG, "do_in_background? " + do_in_background);
@@ -839,7 +849,8 @@ public class ImageSaver extends Thread {
                 pitch_angle, store_ypr,
                 custom_tag_artist,
                 custom_tag_copyright,
-                sample_factor);
+                sample_factor,
+                save_secondary);
 
         if( do_in_background ) {
             if( MyDebug.LOG )
@@ -951,7 +962,8 @@ public class ImageSaver extends Thread {
                 false, false, null, false, 0.0,
                 0.0, false,
                 null, null,
-                1);
+                1,
+                false);
         if( MyDebug.LOG )
             Log.d(TAG, "add dummy request");
         addRequest(dummy_request, 1); // cost must be 1, so we don't have infinite recursion!
@@ -1344,7 +1356,7 @@ public class ImageSaver extends Thread {
                 Log.d(TAG, "average");
 
             saveBaseImages(request, "_");
-            main_activity.savingImage(true);
+            if(!request.save_secondary) main_activity.savingImage(true);
 
 			/*List<Bitmap> bitmaps = loadBitmaps(request.jpeg_images, 0);
 			if (bitmaps == null) {
@@ -1514,12 +1526,12 @@ public class ImageSaver extends Thread {
             if( MyDebug.LOG )
                 Log.d(TAG, "nr_bitmap: " + nr_bitmap + " is mutable? " + nr_bitmap.isMutable());
             System.gc();
-            main_activity.savingImage(false);
+            if(!request.save_secondary) main_activity.savingImage(false);
 
             if( MyDebug.LOG )
                 Log.d(TAG, "save NR image");
             String suffix = "_NR";
-            success = saveSingleImageNow(request, request.jpeg_images.get(0), nr_bitmap, suffix, true, true, true, false);
+            success = saveSingleImageNow(request, request.jpeg_images.get(0), nr_bitmap, suffix, !request.save_secondary, true, true, false, request.save_secondary);
             if( MyDebug.LOG && !success )
                 Log.e(TAG, "saveSingleImageNow failed for nr image");
             nr_bitmap.recycle();
@@ -1549,7 +1561,7 @@ public class ImageSaver extends Thread {
             // note, even if we failed saving some of the expo images, still try to save the HDR image
             if( MyDebug.LOG )
                 Log.d(TAG, "create HDR image");
-            main_activity.savingImage(true);
+            if(!request.save_secondary) main_activity.savingImage(true);
 
             // see documentation for HDRProcessor.processHDR() - because we're using release_bitmaps==true, we need to make sure that
             // the bitmap that will hold the output HDR image is mutable (in case of options like photo stamp)
@@ -1561,7 +1573,7 @@ public class ImageSaver extends Thread {
             if( bitmaps == null ) {
                 if( MyDebug.LOG )
                     Log.e(TAG, "failed to load bitmaps");
-                main_activity.savingImage(false);
+                if(!request.save_secondary) main_activity.savingImage(false);
                 return false;
             }
             if( MyDebug.LOG ) {
@@ -1588,7 +1600,7 @@ public class ImageSaver extends Thread {
                     Log.e(TAG, "UNEQUAL_SIZES");
                     bitmaps.clear();
                     System.gc();
-                    main_activity.savingImage(false);
+                    if(!request.save_secondary) main_activity.savingImage(false);
                     return false;
                 }
                 else {
@@ -1606,7 +1618,7 @@ public class ImageSaver extends Thread {
                 Log.d(TAG, "hdr_bitmap: " + hdr_bitmap + " is mutable? " + hdr_bitmap.isMutable());
             bitmaps.clear();
             System.gc();
-            main_activity.savingImage(false);
+            if(!request.save_secondary) main_activity.savingImage(false);
 
             if( MyDebug.LOG )
                 Log.d(TAG, "save HDR image");
@@ -1614,7 +1626,7 @@ public class ImageSaver extends Thread {
             if( MyDebug.LOG )
                 Log.d(TAG, "base_image_id: " + base_image_id);
             String suffix = request.jpeg_images.size() == 1 ? "_DRO" : "_HDR";
-            success = saveSingleImageNow(request, request.jpeg_images.get(base_image_id), hdr_bitmap, suffix, true, true, true, false);
+            success = saveSingleImageNow(request, request.jpeg_images.get(base_image_id), hdr_bitmap, suffix, !request.save_secondary, true, true, false, request.save_secondary);
             if( MyDebug.LOG && !success )
                 Log.e(TAG, "saveSingleImageNow failed for hdr image");
             if( MyDebug.LOG ) {
@@ -1711,7 +1723,7 @@ public class ImageSaver extends Thread {
 
 			saveBaseImages(request, "_");
 
-			main_activity.savingImage(true);
+            if(!request.save_secondary) main_activity.savingImage(true);
 
             long time_s = System.currentTimeMillis();
 
@@ -1727,7 +1739,7 @@ public class ImageSaver extends Thread {
             if( bitmaps == null ) {
                 if( MyDebug.LOG )
                     Log.e(TAG, "failed to load bitmaps");
-                main_activity.savingImage(false);
+                if(!request.save_secondary) main_activity.savingImage(false);
                 return false;
             }
             if( MyDebug.LOG ) {
@@ -1762,7 +1774,7 @@ public class ImageSaver extends Thread {
                     Log.e(TAG, "panorama failed: " + e.getCode());
                     bitmaps.clear();
                     System.gc();
-                    main_activity.savingImage(false);
+                    if(!request.save_secondary) main_activity.savingImage(false);
                     return false;
                 }
                 else {
@@ -1778,12 +1790,12 @@ public class ImageSaver extends Thread {
             bitmaps.clear();
             System.gc();
 
-			main_activity.savingImage(false);
+            if(!request.save_secondary) main_activity.savingImage(false);
 
             if( MyDebug.LOG )
                 Log.d(TAG, "save panorama image");
             String suffix = "_PANO";
-            success = saveSingleImageNow(request, request.jpeg_images.get(0), panorama, suffix, true, true, true, true);
+            success = saveSingleImageNow(request, request.jpeg_images.get(0), panorama, suffix, !request.save_secondary, true, true, true, request.save_secondary);
             if( MyDebug.LOG && !success )
                 Log.e(TAG, "saveSingleImageNow failed for panorama image");
             panorama.recycle();
@@ -1793,7 +1805,7 @@ public class ImageSaver extends Thread {
             // see note above how we used to use "_EXP" for the suffix for multiple images
             //String suffix = "_EXP";
             String suffix = "_";
-            success = saveImages(request, suffix, false, true, true);
+            success = saveImages(request, suffix, false, !request.save_secondary, !request.save_secondary);
         }
 
         return success;
@@ -1818,7 +1830,7 @@ public class ImageSaver extends Thread {
             boolean multiple_jpegs = request.jpeg_images.size() > 1 && !first_only;
             String filename_suffix = (multiple_jpegs || request.force_suffix) ? suffix + (i + request.suffix_offset) : "";
             boolean share_image = share && (i == mid_image);
-            if( !saveSingleImageNow(request, image, null, filename_suffix, update_thumbnail, share_image, false, false) ) {
+            if( !saveSingleImageNow(request, image, null, filename_suffix, update_thumbnail, share_image, false, false, request.save_secondary) ) {
                 if( MyDebug.LOG )
                     Log.e(TAG, "saveSingleImageNow failed for image: " + i);
                 success = false;
@@ -2396,7 +2408,7 @@ public class ImageSaver extends Thread {
      *                                  been rotated to account for Exif orientation tags in the data.
      */
     @SuppressLint("SimpleDateFormat")
-    private boolean saveSingleImageNow(final Request request, byte [] data, Bitmap bitmap, String filename_suffix, boolean update_thumbnail, boolean share_image, boolean ignore_raw_only, boolean ignore_exif_orientation) {
+    private boolean saveSingleImageNow(final Request request, byte [] data, Bitmap bitmap, String filename_suffix, boolean update_thumbnail, boolean share_image, boolean ignore_raw_only, boolean ignore_exif_orientation, boolean save_secondary) {
         if( MyDebug.LOG )
             Log.d(TAG, "saveSingleImageNow");
 
@@ -2436,7 +2448,7 @@ public class ImageSaver extends Thread {
         if( MyDebug.LOG )
             Log.d(TAG, "extension: " + extension);
 
-        main_activity.savingImage(true);
+        if(!save_secondary) main_activity.savingImage(true);
 
         // If using SAF or image_capture_intent is true, or using scoped storage, only saveUri is non-null
         // Otherwise, only picFile is non-null
@@ -2512,7 +2524,7 @@ public class ImageSaver extends Thread {
                     main_activity.finish();
                 }
             }
-            else if( storageUtils.isUsingSAF() ) {
+             else if( storageUtils.isUsingSAF() && save_secondary) {
                 saveUri = storageUtils.createOutputMediaFileSAF(StorageUtils.MEDIA_TYPE_IMAGE, filename_suffix, extension, request.current_date);
             }
             else if( MainActivity.useScopedStorage() ) {
@@ -2520,8 +2532,8 @@ public class ImageSaver extends Thread {
                     Log.d(TAG, "use media store");
                 use_media_store = true;
                 Uri folder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ?
-                        MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY) :
-                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY) :
+                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
                 contentValues = new ContentValues();
                 String picName = storageUtils.createMediaFilename(StorageUtils.MEDIA_TYPE_IMAGE, filename_suffix, 0, "." + extension, request.current_date);
                 if( MyDebug.LOG )
@@ -2825,7 +2837,7 @@ public class ImageSaver extends Thread {
 
         System.gc();
 
-        main_activity.savingImage(false);
+        if(!request.save_secondary) main_activity.savingImage(false);
 
         if( MyDebug.LOG ) {
             Log.d(TAG, "Save single image performance: total time: " + (System.currentTimeMillis() - time_s));
@@ -3193,7 +3205,7 @@ public class ImageSaver extends Thread {
         StorageUtils storageUtils = main_activity.getStorageUtils();
         boolean success = false;
 
-        main_activity.savingImage(true);
+        if(!request.save_secondary) main_activity.savingImage(true);
 
         OutputStream output = null;
         RawImage raw_image = request.raw_image;
@@ -3349,7 +3361,7 @@ public class ImageSaver extends Thread {
 
         System.gc();
 
-        main_activity.savingImage(false);
+        if(!request.save_secondary) main_activity.savingImage(false);
 
         return success;
     }

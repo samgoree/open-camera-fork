@@ -566,27 +566,28 @@ public class MainUI {
 
             // end icon panel
 
-            view = (View)main_activity.findViewById(R.id.indicator_graph).getParent();
+            view = (View)main_activity.findViewById(R.id.indicator_graph);
             layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
             layoutParams.addRule(align_parent_left, 0);
-            layoutParams.addRule(align_parent_right, 0);
+            layoutParams.addRule(align_parent_right,0);
             layoutParams.addRule(align_parent_top, 0);
             layoutParams.addRule(align_parent_bottom, 0);
-            layoutParams.addRule(ui_independent_below, 0);
             layoutParams.addRule(ui_independent_above, 0);
-            layoutParams.addRule(ui_independent_left_of, R.id.take_photo_or_aesthetics);
-            layoutParams.addRule(ui_independent_right_of, R.id.preview);
-            layoutParams.addRule(center_vertical, RelativeLayout.TRUE);
-            layoutParams.addRule(center_horizontal, RelativeLayout.TRUE);
-            setMarginsForSystemUI(layoutParams, 0, 0, navigation_gap, 0);
+            layoutParams.addRule(ui_independent_below, 0);
+            layoutParams.addRule(ui_independent_left_of, 0);
+            layoutParams.addRule(ui_independent_right_of, 0);
             view.setLayoutParams(layoutParams);
-            //setViewRotation(view, ui_rotation);
+            //if(system_orientation_portrait) {
+            //    setViewRotation(view, ui_rotation);
+            //} else{
+            //    setViewRotation(view, (ui_rotation + 180) % 360);
+            //}
 
             AestheticsApplicationInterface aai = (AestheticsApplicationInterface) main_activity.getApplicationInterface();
             view = aai.getAestheticsGraphView();
             view.setVisibility(
                     sharedPreferences.getBoolean("preference_aesthetics_indicator", false)
-                            ? View.VISIBLE : View.GONE
+                            ? View.VISIBLE : View.INVISIBLE
             );
 
             view = main_activity.findViewById(R.id.take_photo_or_aesthetics);
@@ -597,16 +598,19 @@ public class MainUI {
             layoutParams.addRule(align_parent_bottom, 0);
             layoutParams.addRule(center_vertical, RelativeLayout.TRUE);
             layoutParams.addRule(center_horizontal, 0);
+
             setMarginsForSystemUI(layoutParams, 0, 0, navigation_gap, 0);
             view.setLayoutParams(layoutParams);
             setViewRotation(view, ui_rotation);
+
+
 
             // either the subview of the take_photo_or_aesthetics will be the take_photo button
             // or it will be the aesthetics surface view. We want both to take up the full space.
             view = main_activity.findViewById(R.id.take_photo);
             view.setVisibility(
                     sharedPreferences.getBoolean("preference_aesthetics_mode", false)
-                            ? View.INVISIBLE : View.VISIBLE
+                            ? View.GONE : View.VISIBLE
             );
             view.setClickable(!sharedPreferences.getBoolean("preference_aesthetics_mode", false));
 
@@ -614,7 +618,7 @@ public class MainUI {
             view = aai.getAestheticsIndicatorView();
             view.setVisibility(
                     sharedPreferences.getBoolean("preference_aesthetics_mode", false)
-                            ? View.VISIBLE : View.INVISIBLE
+                            ? View.VISIBLE : View.GONE
             );
 
             view = main_activity.findViewById(R.id.switch_camera);
@@ -628,23 +632,6 @@ public class MainUI {
             layoutParams.addRule(ui_independent_left_of, 0);
             layoutParams.addRule(ui_independent_right_of, 0);
             setMarginsForSystemUI(layoutParams, 0, 0, navigation_gap, 0);
-            view.setLayoutParams(layoutParams);
-            setViewRotation(view, ui_rotation);
-
-            view = main_activity.findViewById(R.id.switch_multi_camera);
-            layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
-            layoutParams.addRule(ui_independent_above, 0);
-            layoutParams.addRule(ui_independent_below, 0);
-            layoutParams.addRule(ui_independent_left_of, R.id.switch_camera);
-            layoutParams.addRule(ui_independent_right_of, 0);
-            layoutParams.addRule(align_top, R.id.switch_camera);
-            layoutParams.addRule(align_bottom, R.id.switch_camera);
-            layoutParams.addRule(align_left, 0);
-            layoutParams.addRule(align_right, 0);
-            {
-                int margin = (int) (5 * scale + 0.5f); // convert dps to pixels
-                setMarginsForSystemUI(layoutParams, 0, 0, margin, 0);
-            }
             view.setLayoutParams(layoutParams);
             setViewRotation(view, ui_rotation);
 
@@ -1345,7 +1332,6 @@ public class MainUI {
                     Log.d(TAG, "setImmersiveMode: set visibility: " + visibility);
                 // n.b., don't hide share and trash buttons, as they require immediate user input for us to continue
                 View switchCameraButton = main_activity.findViewById(R.id.switch_camera);
-                View switchMultiCameraButton = main_activity.findViewById(R.id.switch_multi_camera);
                 View switchVideoButton = main_activity.findViewById(R.id.switch_video);
                 View exposureButton = main_activity.findViewById(R.id.exposure);
                 View exposureLockButton = main_activity.findViewById(R.id.exposure_lock);
@@ -1367,8 +1353,6 @@ public class MainUI {
                 View focusBracketingTargetSeekBar = main_activity.findViewById(R.id.focus_bracketing_target_seekbar);
                 if( main_activity.getPreview().getCameraControllerManager().getNumberOfCameras() > 1 )
                     switchCameraButton.setVisibility(visibility);
-                if( main_activity.showSwitchMultiCamIcon() )
-                    switchMultiCameraButton.setVisibility(visibility);
                 switchVideoButton.setVisibility(visibility);
                 if( main_activity.supportsExposureButton() )
                     exposureButton.setVisibility(visibility);
@@ -1469,7 +1453,6 @@ public class MainUI {
                 final int visibility = is_panorama_recording ? View.GONE : (show_gui_photo && show_gui_video) ? View.VISIBLE : View.GONE; // for UI that is hidden while taking photo or video
                 final int visibility_video = is_panorama_recording ? View.GONE : show_gui_photo ? View.VISIBLE : View.GONE; // for UI that is only hidden while taking photo
                 View switchCameraButton = main_activity.findViewById(R.id.switch_camera);
-                View switchMultiCameraButton = main_activity.findViewById(R.id.switch_multi_camera);
                 View switchVideoButton = main_activity.findViewById(R.id.switch_video);
                 View exposureButton = main_activity.findViewById(R.id.exposure);
                 View exposureLockButton = main_activity.findViewById(R.id.exposure_lock);
@@ -1485,8 +1468,6 @@ public class MainUI {
                 View popupButton = main_activity.findViewById(R.id.popup);
                 if( main_activity.getPreview().getCameraControllerManager().getNumberOfCameras() > 1 )
                     switchCameraButton.setVisibility(visibility);
-                if( main_activity.showSwitchMultiCamIcon() )
-                    switchMultiCameraButton.setVisibility(visibility);
                 switchVideoButton.setVisibility(visibility);
                 if( main_activity.supportsExposureButton() )
                     exposureButton.setVisibility(visibility_video); // still allow exposure when recording video

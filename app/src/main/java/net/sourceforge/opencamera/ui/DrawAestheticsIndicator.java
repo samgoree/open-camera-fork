@@ -28,6 +28,9 @@ public class DrawAestheticsIndicator {
     private static float graph_y_min = 0;
     private static float graph_y_max = 1;
 
+    private static int center_color = Color.argb(255,123,134,142);
+    private static int edge_color = Color.argb(255,38,169,108);
+
 
     public DrawAestheticsIndicator(MainActivity main_activity,
                                    AestheticsApplicationInterface application_interface,
@@ -53,14 +56,14 @@ public class DrawAestheticsIndicator {
     public void drawIndicator(Canvas canvas, float score) {
         canvas.drawARGB(255,0,0,0);
 
-        Paint p = new Paint();
+        /*Paint p = new Paint();
         float area = (score * 100);
         int circles = (int)(Math.sqrt(area) * 10);
         for(int i = circles; i > 0; i-= 1) {
             float fraction = ((float)i / 100);
             p.setARGB(255, (int) (-fraction * 128 + 128), 0, (int) (fraction * 128 + 128));
             canvas.drawCircle(125, 125, i, p);
-        }
+        }*/
     }
 
     private float valueToYCoordinate(float value, Canvas canvas){
@@ -78,16 +81,17 @@ public class DrawAestheticsIndicator {
         return size * (value - graph_x_min) / (graph_x_max - graph_x_min);
     }
 
-    public void drawGraph(Canvas canvas, float[] score, int startPosition){
+    public void drawGraph(Canvas canvas, float[] score, int startPosition, boolean drawLine, float lineHeight){
         Paint p = new Paint();
         canvas.drawARGB(255,0,0,0);
 
-        p.setARGB(255,128,128,128);
-        p.setShader(new LinearGradient(0, 0, 0, canvas.getHeight(), Color.argb(255,128,128,128), Color.argb(255,0,0,0), Shader.TileMode.MIRROR));
+
+        p.setShader(new LinearGradient(0, 0, 0, canvas.getHeight(), edge_color, center_color, Shader.TileMode.CLAMP));
 
         this.graph_x_max = score.length;
         int currentPosition = startPosition;
         int nextPosition = (startPosition + 1) % score.length;
+
         for(int i = 0; i < score.length-1; i++) {
             currentPosition = nextPosition;
             nextPosition = (nextPosition + 1) % score.length;
@@ -96,24 +100,31 @@ public class DrawAestheticsIndicator {
                     valueToXCoordinate((float)i, canvas),
                     canvas.getHeight(),
                     valueToXCoordinate((float)i+1, canvas),
-                    valueToYCoordinate(score[currentPosition], canvas),
-                    valueToYCoordinate(score[nextPosition], canvas));
+                    valueToYCoordinate((float) Math.pow(score[currentPosition],2), canvas),
+                    valueToYCoordinate((float) Math.pow(score[nextPosition],2), canvas));
+        }
+        if(drawLine) {
+            p.setColor(Color.argb(255, 100, 120, 200));
+            p.setShader(null);
+            canvas.drawLine(0, valueToYCoordinate(lineHeight, canvas), valueToXCoordinate((float) score.length, canvas), valueToYCoordinate(lineHeight, canvas), p);
         }
     }
 
     public void draw(float[] scores, int newestScorePosition){
         SurfaceHolder holder;
         Canvas c;
+        boolean drawLine = false;
         if(this.applicationInterface.getAestheticsIndicatorView().getVisibility() == View.VISIBLE) {
             holder = this.applicationInterface.getAestheticsIndicatorView().getHolder();
             c = holder.lockCanvas();
             this.drawIndicator(c, scores[newestScorePosition]);
             holder.unlockCanvasAndPost(c);
+            drawLine = true;
         }
         if(this.applicationInterface.getAestheticsGraphView().getVisibility() == View.VISIBLE) {
             holder = this.applicationInterface.getAestheticsGraphView().getHolder();
             c = holder.lockCanvas();
-            this.drawGraph(c, scores, newestScorePosition);
+            this.drawGraph(c, scores, newestScorePosition, drawLine, applicationInterface.threshold);
             holder.unlockCanvasAndPost(c);
         }
     }
