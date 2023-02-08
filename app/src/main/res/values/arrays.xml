@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="aesthetics_model_names">
-        <item>Laplace Aesthetics</item>
-        <item>Ke Aesthetics</item>
-        <item>Lu Aesthetics</item>
-        <item>Sheng Aesthetics</item>
+        <item>Model A</item>
+        <item>Model B</item>
+        <item>Model C</item>
+        <item>Model D</item>
     </string-array>
     <string-array name="aesthetics_model_files">
         <item>blur.pt</item>
         <item>classical.pt</item>
         <item>deep.pt</item>
-        <item>mpada.pt</item>
+        <item>resnet.pt</item>
     </string-array>
     <string-array name="focus_mode_icons">
         <item>drawable/focus_mode_auto</item>
