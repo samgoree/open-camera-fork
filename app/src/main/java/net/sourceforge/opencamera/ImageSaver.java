@@ -2456,6 +2456,7 @@ public class ImageSaver extends Thread {
         Uri saveUri = null;
         boolean use_media_store = false;
         ContentValues contentValues = null; // used if using scoped storage
+        String modelName = ((AestheticsApplicationInterface)applicationInterface).getSaveText();
         try {
             if( !raw_only ) {
                 PostProcessBitmapResult postProcessBitmapResult = postProcessBitmap(request, data, bitmap, ignore_exif_orientation);
@@ -2525,7 +2526,7 @@ public class ImageSaver extends Thread {
                 }
             }
              else if( storageUtils.isUsingSAF() && save_secondary) {
-                saveUri = storageUtils.createOutputMediaFileSAF(StorageUtils.MEDIA_TYPE_IMAGE, filename_suffix, extension, request.current_date);
+                saveUri = storageUtils.createOutputMediaFileSAF(StorageUtils.MEDIA_TYPE_IMAGE, modelName + filename_suffix, extension, request.current_date);
             }
             else if( MainActivity.useScopedStorage() ) {
                 if( MyDebug.LOG )
@@ -2535,7 +2536,7 @@ public class ImageSaver extends Thread {
                             MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY) :
                             MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
                 contentValues = new ContentValues();
-                String picName = storageUtils.createMediaFilename(StorageUtils.MEDIA_TYPE_IMAGE, filename_suffix, 0, "." + extension, request.current_date);
+                String picName = storageUtils.createMediaFilename(StorageUtils.MEDIA_TYPE_IMAGE, modelName + filename_suffix, 0, "." + extension, request.current_date);
                 if( MyDebug.LOG )
                     Log.d(TAG, "picName: " + picName);
                 contentValues.put(MediaStore.Images.Media.DISPLAY_NAME, picName);
@@ -2580,7 +2581,7 @@ public class ImageSaver extends Thread {
                 }
             }
             else {
-                picFile = storageUtils.createOutputMediaFile(StorageUtils.MEDIA_TYPE_IMAGE, filename_suffix, extension, request.current_date);
+                picFile = storageUtils.createOutputMediaFile(StorageUtils.MEDIA_TYPE_IMAGE, modelName + "_" + filename_suffix, extension, request.current_date);
                 if( MyDebug.LOG )
                     Log.d(TAG, "save to: " + picFile.getAbsolutePath());
             }

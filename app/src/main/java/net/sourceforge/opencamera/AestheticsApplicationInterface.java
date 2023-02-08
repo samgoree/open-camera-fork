@@ -26,6 +26,7 @@ import org.pytorch.MemoryFormat;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 
 import java.io.File;
@@ -52,10 +53,12 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
     public float threshold;
     public boolean show_message = false;
     public String message_text = "";
+    private HashMap<String,String> model_to_name;
     public float aesthetics_score = 0;
     private boolean safe_to_take_photo;
     public static long delayInMS = 1000;
-    public static int rollingAverageLength = 20;
+    public static int rollingAverageLength = 10;
+    public static float thresholdRatio = 1.1f;
     private float[] previous_scores;
     private int previous_scores_position;
 
@@ -96,17 +99,44 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         this.takePhotoLock = new Object();
 
         this.sharedPreferences = PreferenceManager.getDefaultSharedPreferences(main_activity);
+        this.model_to_name = new HashMap<String, String>();
+
+        String[] model_files = main_activity.getResources().getStringArray(R.array.aesthetics_model_files);
+        String[] model_names = main_activity.getResources().getStringArray(R.array.aesthetics_model_names);
+        for(int i = 0; i < model_files.length; i++) {
+            this.model_to_name.put(model_files[i], model_names[i]);
+        }
+
         this.setModel(sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt"));
 
         this.initialize_scores();
-
     }
 
     private void initialize_scores(){
-        this.previous_scores = new float[rollingAverageLength];
-        for(int i=0;i<rollingAverageLength;i++){ this.previous_scores[i] = 10000f; };
-        previous_scores_position = 0;
-        this.threshold = 10000f;
+        this.previous_scores = new float[rollingAverageLength * 2];
+        for(int i=0;i<rollingAverageLength * 2;i++){ this.previous_scores[i] = 10000f; };
+        previous_scores_position = 10;
+        this.threshold = 10000f * thresholdRatio;
+    }
+
+    public String getSaveText(){
+        //get model name
+        String modelName = model_to_name.get(sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt"));
+        modelName = modelName.replace(' ', '_');
+        //get settings
+        boolean indicator = sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false);
+        boolean capture = sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false);
+        String mode = "noindicator_normal";
+        if(indicator && capture){
+            mode = "indicator_capture";
+        } else if(indicator){
+            mode = "indicator_normal";
+        } else if(capture){
+            mode = "noindicator_capture";
+        } else{
+            return mode;
+        }
+        return mode + "_" + modelName;
     }
 
     private float classify(byte[] data){
@@ -174,11 +204,34 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         return (float)(Math.exp(scores[1]) / (Math.exp(scores[0]) + Math.exp(scores[1])));
     }
 
+    private float classify_resnet(byte[] data){
+        Bitmap bitmap = decode_cropped_bitmap(data);
+
+        //change RGB to BGR
+        Paint paint = new Paint();
+        ColorMatrixColorFilter cmcf = new ColorMatrixColorFilter(
+                new float[]{0, 0, 1, 0, 0,
+                        0, 1, 0, 0, 0,
+                        1, 0, 0, 0, 0,
+                        0, 0, 0, 1, 0}
+        );
+        paint.setColorFilter(cmcf);
+        Canvas drawable = new Canvas(bitmap);
+        drawable.drawBitmap(bitmap,0,0, paint);
+
+        final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
+                bitmap,
+                new float[]{0.406f, 0.456f, 0.485f},
+                new float[]{0.225f, 0.224f, 0.229f},
+                MemoryFormat.CHANNELS_LAST);
+
+        final Tensor outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
+        final float[] scores = outputTensor.getDataAsFloatArray();
+
+        return (float)(Math.exp(scores[1]) / (Math.exp(scores[0]) + Math.exp(scores[1])));
+    }
+
     private Bitmap decode_cropped_bitmap(byte[] data){
-        BitmapFactory.Options opt = new BitmapFactory.Options();
-        opt.outHeight = 224;
-        opt.outWidth = 224;
-        opt.inSampleSize = 8;
         BitmapRegionDecoder decoder;
         try {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
@@ -193,11 +246,30 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         }
         int height = decoder.getHeight();
         int width = decoder.getWidth();
-        int left = Math.max(0, width / 2 - (opt.outWidth * opt.inSampleSize) / 2);
-        int right = Math.min(width, width / 2 + (opt.outWidth * opt.inSampleSize) / 2);
-        int top = Math.max(0, height / 2 - (opt.outHeight * opt.inSampleSize) / 2);
-        int bottom = Math.min(height, height / 2 + (opt.outHeight * opt.inSampleSize) / 2);
-        Bitmap bitmap = decoder.decodeRegion(new Rect(left,top,right,bottom), opt);
+
+        BitmapFactory.Options opt = new BitmapFactory.Options();
+        int targetHeight, targetWidth;
+        if(height < width) {
+            targetHeight = 256;
+            targetWidth = width * 256 / height;
+            if(height > 1024) opt.inSampleSize = 8;
+            else opt.inSampleSize = 4;
+        }else{
+            targetWidth = 256;
+            targetHeight = height * 256 / width;
+            if(width > 1024) opt.inSampleSize = 8;
+            else opt.inSampleSize = 4;
+        }
+        Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, opt);
+        bitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true);
+        height = bitmap.getHeight();
+        width = bitmap.getWidth();
+        int left = Math.max(0, width / 2 - (224) / 2);
+        //int right = Math.min(width, width / 2 + (opt.outWidth * opt.inSampleSize) / 2);
+        int top = Math.max(0, height / 2 - (224) / 2);
+        //int bottom = Math.min(height, height / 2 + (opt.outHeight * opt.inSampleSize) / 2);
+        bitmap = Bitmap.createBitmap(bitmap, left, top, 224, 224);
+        // crop to 224 by 224
         //rotate
         Matrix rotation = new Matrix();
         int angle = 0;
@@ -214,7 +286,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         BitmapFactory.Options opt = new BitmapFactory.Options();
         //opt.outHeight = 224;
         //opt.outWidth = 224;
-        //opt.inSampleSize = 4;
+        opt.inSampleSize = 4;
         Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, opt);
 
         // center crop to get it square and rotate
@@ -243,12 +315,14 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                 croppedBitmap,
                 224,
                 224,
-                false
+                true
         );
         return resizedBitmap;
     }
 
     public void start_take_photo_and_classify(){
+        show_message = true;
+        if(message_text == null) message_text = "";
         if(this.classify_thread != null && this.classify_thread.isAlive()){
             resume_take_photo_and_classify();
             return;
@@ -265,6 +339,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
     }
 
     public void stop_take_photo_and_classify(){
+        show_message = false;
         if(this.classify_thread != null) this.classify_thread.interrupt();
         synchronized(pauseLock) {
             this.paused = true;
@@ -272,11 +347,13 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
     }
 
     public void pause_take_photo_and_classify(){
+        show_message = false;
         synchronized(pauseLock){
             this.paused = true;
         }
     }
     public void resume_take_photo_and_classify() {
+        show_message = true;
         if(this.classify_thread == null || !this.classify_thread.isAlive()){
             start_take_photo_and_classify();
         }
@@ -303,31 +380,35 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                                 public void onPictureTaken(byte[] data) {
 
                                     float value = 0;
-
-                                    if (sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt").equals("deep.pt")) {
+                                    String model_file_name = sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt");
+                                    if (model_file_name.equals("deep.pt")) {
 
                                         value = classify_lu(data);
-                                    } else if (sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt").equals("mpada.pt")) {
+                                    } else if (model_file_name.equals("mpada.pt")) {
                                         value = classify_sheng(data);
+                                    } else if (model_file_name.equals("resnet.pt")) {
+                                        value = classify_resnet(data);
                                     }else {
                                         value = classify(data);
                                     }
 
                                     //show_message = true;
-                                    message_text = "Quality: " + Double.toString((double) Math.round(value * 10000d) / 10000d);
+                                    //message_text = "Quality: " + Double.toString((double) Math.round(value * 10000d) / 10000d) + "Threshold: " + Double.toString( (double) Math.round(threshold * 10000d) / 10000d);
 
                                     // if we have a good photo and we're in aesthetics capture mode
-                                    if (value > (threshold + threshold * 0.5) && sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false)) {
+                                    if (value > threshold && sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false)) {
                                         List<byte[]> images = new ArrayList<>();
                                         images.add(data);
                                         saveImage(false, images, new Date());
                                     }
-                                    float removedValue = previous_scores[previous_scores_position];
-                                    threshold -= removedValue / rollingAverageLength;
-                                    threshold += value / rollingAverageLength;
+                                    // the value we subtract off isn't necessarily the same as the new value
+                                    // it will be rollingAverageLength behind where we currently are in the list
+                                    float subtractedValue = previous_scores[(previous_scores_position - rollingAverageLength + previous_scores.length) % previous_scores.length];
+                                    threshold -= subtractedValue * thresholdRatio / rollingAverageLength;
+                                    threshold += value * thresholdRatio / rollingAverageLength;
                                     previous_scores[previous_scores_position] = value;
                                     drawAestheticsIndicator.draw(previous_scores, previous_scores_position);
-                                    previous_scores_position = (previous_scores_position + 1) % rollingAverageLength;
+                                    previous_scores_position = (previous_scores_position + 1) % previous_scores.length;
                                     if (MyDebug.LOG)
                                         Log.d(TAG, "Value:" + Float.toString(value) + " threshold:" + Float.toString(threshold));
 
@@ -481,7 +562,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
             }
         }
         //show_message = true;
-        message_text = "Saving image: " + Integer.toString(max_quality_ind + 1);
+        //message_text = "Saving image: " + Integer.toString(max_quality_ind + 1);
         List<byte []> save_images = new ArrayList<>();
         save_images.add(images.get(max_quality_ind));
 
@@ -548,6 +629,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
             resume_take_photo_and_classify();
         }
 
+        message_text = (String)model_to_name.get(newModelPath);
     }
 
     public AestheticsIndicatorView getAestheticsIndicatorView(){ return this.aestheticsIndicator.getSurface();}
