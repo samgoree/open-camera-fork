@@ -460,7 +460,7 @@ public class MainActivity extends AppCompatActivity {
         zoomSeekbar.setVisibility(View.INVISIBLE);
 
         // initialise state of on-screen icons
-        mainUI.updateOnScreenIcons();
+        //mainUI.updateOnScreenIcons();
 
         // listen for orientation event change
         orientationEventListener = new OrientationEventListener(this) {
@@ -1415,7 +1415,7 @@ public class MainActivity extends AppCompatActivity {
         soundPoolManager.loadSound(R.raw.mybeep_hi);
 
         resetCachedSystemOrientation(); // just in case?
-        mainUI.layoutUI();
+        //mainUI.layoutUI();
 
         updateGalleryIcon(); // update in case images deleted whilst idle
 
@@ -2250,11 +2250,12 @@ public class MainActivity extends AppCompatActivity {
         switchVideoButton.setEnabled(true);
 
         mainUI.setTakePhotoIcon();
-        mainUI.setPopupIcon(); // needed as turning to video mode or back can turn flash mode off or back on
+        //mainUI.setPopupIcon(); // needed as turning to video mode or back can turn flash mode off or back on
 
         // ensure icons invisible if they're affected by being in video mode or not (e.g., on-screen RAW icon)
         // (if enabling them, we'll make the icon visible later on)
         checkDisableGUIIcons();
+
 
         if( !block_startup_toast ) {
             this.showPhotoVideoToast(true);
@@ -2989,14 +2990,14 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "checkDisableGUIIcons");
         boolean changed = false;
         if( !supportsExposureButton() ) {
-            View button = findViewById(R.id.exposure);
-            changed = changed || (button.getVisibility() != View.GONE);
-            button.setVisibility(View.GONE);
+            //View button = findViewById(R.id.exposure);
+            //changed = changed || (button.getVisibility() != View.GONE);
+            //button.setVisibility(View.GONE);
         }
         if( !mainUI.showExposureLockIcon() ) {
-            View button = findViewById(R.id.exposure_lock);
-            changed = changed || (button.getVisibility() != View.GONE);
-            button.setVisibility(View.GONE);
+            //View button = findViewById(R.id.exposure_lock);
+           // changed = changed || (button.getVisibility() != View.GONE);
+           // button.setVisibility(View.GONE);
         }
         if( !mainUI.showWhiteBalanceLockIcon() ) {
             View button = findViewById(R.id.white_balance_lock);
@@ -5173,7 +5174,7 @@ public class MainActivity extends AppCompatActivity {
         View exposureButton = findViewById(R.id.exposure);
         //exposureButton.setVisibility(supportsExposureButton() && !mainUI.inImmersiveMode() ? View.VISIBLE : View.GONE);
         if( supportsExposureButton() && !mainUI.inImmersiveMode() )
-            exposureButton.setVisibility(View.VISIBLE);
+        //    exposureButton.setVisibility(View.VISIBLE);
 
         // needed as availability of some icons is per-camera (e.g., flash, RAW)
         // for making icons visible, this is done elsewhere in call to MainUI.showGUI()
@@ -5186,7 +5187,7 @@ public class MainActivity extends AppCompatActivity {
         // need to update some icons, e.g., white balance and exposure lock due to them being turned off when pause/resuming
         mainUI.updateOnScreenIcons();
 
-        mainUI.setPopupIcon(); // needed so that the icon is set right even if no flash mode is set when starting up camera (e.g., switching to front camera with no flash)
+        //mainUI.setPopupIcon(); // needed so that the icon is set right even if no flash mode is set when starting up camera (e.g., switching to front camera with no flash)
         if( MyDebug.LOG )
             Log.d(TAG, "cameraSetup: time after setting popup icon: " + (System.currentTimeMillis() - debug_time));
 

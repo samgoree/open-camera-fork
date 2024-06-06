@@ -1355,9 +1355,9 @@ public class MainUI {
                     switchCameraButton.setVisibility(visibility);
                 switchVideoButton.setVisibility(visibility);
                 if( main_activity.supportsExposureButton() )
-                    exposureButton.setVisibility(visibility);
+                    //exposureButton.setVisibility(visibility);
                 if( showExposureLockIcon() )
-                    exposureLockButton.setVisibility(visibility);
+                    //exposureLockButton.setVisibility(visibility);
                 if( showWhiteBalanceLockIcon() )
                     whiteBalanceLockButton.setVisibility(visibility);
                 if( showCycleRawIcon() )
@@ -1470,9 +1470,9 @@ public class MainUI {
                     switchCameraButton.setVisibility(visibility);
                 switchVideoButton.setVisibility(visibility);
                 if( main_activity.supportsExposureButton() )
-                    exposureButton.setVisibility(visibility_video); // still allow exposure when recording video
+                    //exposureButton.setVisibility(visibility_video); // still allow exposure when recording video
                 if( showExposureLockIcon() )
-                    exposureLockButton.setVisibility(visibility_video); // still allow exposure lock when recording video
+                    //exposureLockButton.setVisibility(visibility_video); // still allow exposure lock when recording video
                 if( showWhiteBalanceLockIcon() )
                     whiteBalanceLockButton.setVisibility(visibility_video); // still allow white balance lock when recording video
                 if( showCycleRawIcon() )
@@ -1663,7 +1663,7 @@ public class MainUI {
             closeExposureUI();
         }
         else if( main_activity.getPreview().getCameraController() != null && main_activity.supportsExposureButton() ) {
-            setupExposureUI();
+            //setupExposureUI();
             if (main_activity.getBluetoothRemoteControl().remoteEnabled()) {
                 initRemoteControlForExposureUI();
             }
