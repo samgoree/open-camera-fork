@@ -1133,7 +1133,7 @@ public class DrawPreview {
                 p.getTextBounds(bounds_time_string, 0, bounds_time_string.length(), text_bounds_time);
             }
             first_line_xshift += text_bounds_time.width() + gap_x;
-            int height = applicationInterface.drawTextWithBackground(canvas, p, current_time_string, Color.WHITE, Color.BLACK, location_x, location_y, MyApplicationInterface.Alignment.ALIGNMENT_TOP, null, MyApplicationInterface.Shadow.SHADOW_OUTLINE, text_bounds_time);
+            int height = 0; //applicationInterface.drawTextWithBackground(canvas, p, current_time_string, Color.WHITE, Color.BLACK, location_x, location_y, MyApplicationInterface.Alignment.ALIGNMENT_TOP, null, MyApplicationInterface.Shadow.SHADOW_OUTLINE, text_bounds_time);
             height += gap_y;
             // don't update location_y yet, as we have time and cameraid shown on the same line
             first_line_height = Math.max(first_line_height, height);
@@ -1152,7 +1152,7 @@ public class DrawPreview {
                 p.getTextBounds(camera_id_string, 0, camera_id_string.length(), text_bounds_camera_id);
             }
             int xpos = align_right ? location_x - first_line_xshift : location_x + first_line_xshift;
-            int height = applicationInterface.drawTextWithBackground(canvas, p, camera_id_string, Color.WHITE, Color.BLACK, xpos, location_y, MyApplicationInterface.Alignment.ALIGNMENT_TOP, null, MyApplicationInterface.Shadow.SHADOW_OUTLINE, text_bounds_camera_id);
+            int height =0; //applicationInterface.drawTextWithBackground(canvas, p, camera_id_string, Color.WHITE, Color.BLACK, xpos, location_y, MyApplicationInterface.Alignment.ALIGNMENT_TOP, null, MyApplicationInterface.Shadow.SHADOW_OUTLINE, text_bounds_camera_id);
             height += gap_y;
             // don't update location_y yet, as we have time and cameraid shown on the same line
             first_line_height = Math.max(first_line_height, height);
@@ -1191,7 +1191,7 @@ public class DrawPreview {
                     text_bounds_free_memory = new Rect();
                     p.getTextBounds(free_memory_gb_string, 0, free_memory_gb_string.length(), text_bounds_free_memory);
                 }
-                int height = applicationInterface.drawTextWithBackground(canvas, p, free_memory_gb_string, Color.WHITE, Color.BLACK, location_x, location_y, MyApplicationInterface.Alignment.ALIGNMENT_TOP, null, MyApplicationInterface.Shadow.SHADOW_OUTLINE, text_bounds_free_memory);
+                int height = 0; //applicationInterface.drawTextWithBackground(canvas, p, free_memory_gb_string, Color.WHITE, Color.BLACK, location_x, location_y, MyApplicationInterface.Alignment.ALIGNMENT_TOP, null, MyApplicationInterface.Shadow.SHADOW_OUTLINE, text_bounds_free_memory);
                 height += gap_y;
                 if( device_ui_rotation == 90 ) {
                     location_y -= height;
@@ -1273,7 +1273,7 @@ public class DrawPreview {
                     ae_started_scanning_ms = -1;
                 }
                 // can't cache the bounds rect, as the width may change significantly as the ISO or exposure values change
-                int height = applicationInterface.drawTextWithBackground(canvas, p, iso_exposure_string, text_color, Color.BLACK, location_x, location_y, MyApplicationInterface.Alignment.ALIGNMENT_TOP, ybounds_text, MyApplicationInterface.Shadow.SHADOW_OUTLINE);
+                int height = 0; //applicationInterface.drawTextWithBackground(canvas, p, iso_exposure_string, text_color, Color.BLACK, location_x, location_y, MyApplicationInterface.Alignment.ALIGNMENT_TOP, ybounds_text, MyApplicationInterface.Shadow.SHADOW_OUTLINE);
                 height += gap_y;
                 // only move location_y if we actually print something (because on old camera API, even if the ISO option has
                 // been enabled, we'll never be able to display the on-screen ISO)
