@@ -140,9 +140,9 @@ public class PopupView extends LinearLayout {
                     public void onClick(String option) {
                         if( MyDebug.LOG )
                             Log.d(TAG, "clicked flash: " + option);
-                        preview.updateFlash(option);
-                        main_activity.getMainUI().setPopupIcon();
-                        main_activity.getMainUI().destroyPopup(); // need to recreate popup for new selection
+                        //preview.updateFlash(option);
+                        //main_activity.getMainUI().setPopupIcon();
+                        //main_activity.getMainUI().destroyPopup(); // need to recreate popup for new selection
                     }
                 });
             }
