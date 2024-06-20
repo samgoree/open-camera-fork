@@ -1,0 +1,435 @@
+diff --git a/app/src/main/java/net/sourceforge/opencamera/AestheticsApplicationInterface.java b/app/src/main/java/net/sourceforge/opencamera/AestheticsApplicationInterface.java
+index 57f21323..3e9f0df9 100644
+--- a/app/src/main/java/net/sourceforge/opencamera/AestheticsApplicationInterface.java
++++ b/app/src/main/java/net/sourceforge/opencamera/AestheticsApplicationInterface.java
+@@ -51,6 +51,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
+ 
+ 
+     public float threshold;
++    public float threshold2;
+     public boolean show_message = false;
+     public String message_text = "";
+     private HashMap<String,String> model_to_name;
+@@ -60,7 +61,10 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
+     public static int rollingAverageLength = 10;
+     public static float thresholdRatio = 1.1f;
+     private float[] previous_scores;
++    private float[] previous_scores_2;
++
+     private int previous_scores_position;
++    private int previous_scores_position_2;
+ 
+     private DrawPreview drawPreview;
+ 
+@@ -68,6 +72,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
+ 
+     private Bitmap bitmap = null;
+     private Module module = null;
++    private Module module2 = null;
+     private MainActivity main_activity = null;
+     private Thread classify_thread;
+     private boolean paused;
+@@ -78,8 +83,12 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
+ 
+ 
+     private AestheticsIndicator aestheticsIndicator;
++    private AestheticsIndicator aestheticsIndicator2;
+     private AestheticsGraph aestheticsGraph;
++    private AestheticsGraph aestheticsGraph2;
++
+     private DrawAestheticsIndicator drawAestheticsIndicator;
++    private DrawAestheticsIndicator drawAestheticsIndicator2;
+ 
+ 
+     public AestheticsApplicationInterface(MainActivity main_activity, Bundle savedInstanceState) throws IOException {
+@@ -90,8 +99,11 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
+ 
+         this.aestheticsIndicator = new AestheticsIndicator( this, this.main_activity);
+         this.aestheticsGraph = new AestheticsGraph(this, this.main_activity);
++        this.aestheticsIndicator2 = new AestheticsIndicator(this, this.main_activity);
++        this.aestheticsGraph2 = new AestheticsGraph(this, this.main_activity);
+ 
+         this.drawAestheticsIndicator = new DrawAestheticsIndicator(main_activity, this, this.aestheticsIndicator, this.aestheticsGraph);
++        this.drawAestheticsIndicator2 = new DrawAestheticsIndicator(main_activity, this, this.aestheticsIndicator2, this.aestheticsGraph2);
+         this.safe_to_take_photo = true;
+         this.classify_thread = null;
+         this.paused = false;
+@@ -107,16 +119,20 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
+             this.model_to_name.put(model_files[i], model_names[i]);
+         }
+ 
+-        this.setModel(sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt"));
++        this.setModel("blur.pt", "classical.pt");
+ 
+         this.initialize_scores();
+     }
+ 
+     private void initialize_scores(){
+         this.previous_scores = new float[rollingAverageLength * 2];
++        this.previous_scores_2 = new float[rollingAverageLength * 2];
+         for(int i=0;i<rollingAverageLength * 2;i++){ this.previous_scores[i] = 10000f; };
+         previous_scores_position = 10;
++        previous_scores_position_2 = 10;
+         this.threshold = 10000f * thresholdRatio;
++        this.threshold2 = 10000f * thresholdRatio;
++
+     }
+ 
+     public String getSaveText(){
+@@ -148,7 +164,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
+                 new float[]{1.0f, 1.0f, 1.0f},
+                 MemoryFormat.CHANNELS_LAST);
+         
+-        final Tensor outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
++        final Tensor outputTensor = module2.forward(IValue.from(inputTensor)).toTensor();
+ 
+         // getting tensor content as java array of floats
+         final float[] scores = outputTensor.getDataAsFloatArray();
+@@ -380,22 +396,31 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
+                                 public void onPictureTaken(byte[] data) {
+ 
+                                     float value = 0;
+-                                    String model_file_name = sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt");
++                                    float value2 = 0;
++                                    String model_file_name = "blur.pt";
++                                    String model2_file_name = "classical.pt";
+                                     if (model_file_name.equals("deep.pt")) {
+ 
+                                         value = classify_lu(data);
++                                        value2 = classify_lu(data);
+                                     } else if (model_file_name.equals("mpada.pt")) {
+                                         value = classify_sheng(data);
++                                        value2 = classify_sheng(data);
+                                     } else if (model_file_name.equals("resnet.pt")) {
+                                         value = classify_resnet(data);
++                                        value2 = classify_sheng(data);
+                                     }else if (model_file_name.equals("blur.pt")) {
+                                         value = classify(data);
++                                        value2 = classify(data);
+                                         // subtract off mean, divide by 1/4 the std, add 0.5
+                                         value = 0.5f + (value - 0.0245681f) / (0.0405277f * 4) ;
++                                        value2 = 0.5f + (value2 - 0.0245681f) / (0.0405277f * 4) ;
+                                     } else{ // classical
+                                         value = classify(data);
++                                        value2 = classify(data);
+                                         // subtract off mean, divide by 1/4 the std, add 0.5
+                                         value = 0.5f + (value - 0.7179374f) / (0.0306888f * 4) ;
++                                        value2 = 0.5f + (value2 - 0.0245681f) / (0.0405277f * 4) ;
+                                     }
+ 
+                                     //show_message = true;
+@@ -409,7 +434,8 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
+                                     }
+                                     // the value we subtract off isn't necessarily the same as the new value
+                                     // it will be rollingAverageLength behind where we currently are in the list
+-                                    float subtractedValue = previous_scores[(previous_scores_position - rollingAverageLength + previous_scores.length) % previous_scores.length];
++                                    float subtractedValue = previous_scores[
++                                            (previous_scores_position - rollingAverageLength + previous_scores.length) % previous_scores.length];
+                                     threshold -= subtractedValue * thresholdRatio / rollingAverageLength;
+                                     threshold += value * thresholdRatio / rollingAverageLength;
+                                     previous_scores[previous_scores_position] = value;
+@@ -417,6 +443,19 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
+                                     previous_scores_position = (previous_scores_position + 1) % previous_scores.length;
+                                     if (MyDebug.LOG)
+                                         Log.d(TAG, "Value:" + Float.toString(value) + " threshold:" + Float.toString(threshold));
++                                    // DUPLICATING THE ABOVE POSITION CODE ^. CREATING ANOTHER AESTHETICS GRAPH. 2 AT THE SAME TIME.
++
++                                    float subtractedValue2 = previous_scores_2[
++                                            (previous_scores_position_2 - rollingAverageLength + previous_scores_2.length) % previous_scores_2.length];
++                                    threshold2 -= subtractedValue2 * thresholdRatio / rollingAverageLength;
++                                    threshold2 += value2 * thresholdRatio / rollingAverageLength;
++                                    previous_scores_2[previous_scores_position_2] = value2;
++                                    drawAestheticsIndicator2.draw(previous_scores_2, previous_scores_position_2);
++                                    previous_scores_position_2 = (previous_scores_position_2 + 1) % previous_scores_2.length;
++                                    if (MyDebug.LOG)
++                                        Log.d(TAG, "Value:" + Float.toString(value2) + " threshold:" + Float.toString(threshold2));
++
++
+ 
+                                     List<byte []> images = new ArrayList<>();
+                                     images.add(data);
+@@ -429,6 +468,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
+                                     this.onCompleted();
+                                 }
+ 
++
+                                 public void onStarted() {
+                                     if (MyDebug.LOG)
+                                         Log.d(TAG, "aesthetetics application interface onStarted");
+@@ -619,7 +659,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
+         return this.sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false);
+     }
+ 
+-    public void setModel(String newModelPath){
++    public void setModel(String newModelPath, String newModelPath2){
+         boolean resume;
+         if(classify_thread != null && classify_thread.isAlive()) {
+             pause_take_photo_and_classify();
+@@ -627,6 +667,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
+         } else resume = false;
+         try {
+             this.module = LiteModuleLoader.load(assetFilePath(this.main_activity, newModelPath));
++            this.module2 = LiteModuleLoader.load(assetFilePath(this.main_activity, newModelPath2));
+         } catch (IOException e) {
+             e.printStackTrace();
+         }
+@@ -639,5 +680,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
+     }
+ 
+     public AestheticsIndicatorView getAestheticsIndicatorView(){ return this.aestheticsIndicator.getSurface();}
++    public AestheticsIndicatorView getAestheticsIndicatorView2(){ return this.aestheticsIndicator2.getSurface();}
+     public AestheticsGraphView getAestheticsGraphView(){ return this.aestheticsGraph.getSurface();}
++    public AestheticsGraphView getAestheticsGraphView2(){ return this.aestheticsGraph2.getSurface();}
+ }
+diff --git a/app/src/main/java/net/sourceforge/opencamera/AestheticsGraph.java b/app/src/main/java/net/sourceforge/opencamera/AestheticsGraph.java
+index a8ab0d26..a517f327 100644
+--- a/app/src/main/java/net/sourceforge/opencamera/AestheticsGraph.java
++++ b/app/src/main/java/net/sourceforge/opencamera/AestheticsGraph.java
+@@ -9,6 +9,7 @@ import net.sourceforge.opencamera.ui.AestheticsIndicatorView;
+ 
+ public class AestheticsGraph implements SurfaceHolder.Callback{
+     private AestheticsGraphView aestheticsGraphView;
++    private AestheticsGraphView aestheticsGraphView2;
+     private MainActivity mainActivity;
+ 
+     private boolean has_surface;
+@@ -18,11 +19,18 @@ public class AestheticsGraph implements SurfaceHolder.Callback{
+         this.aestheticsGraphView = mainActivity.findViewById(R.id.indicator_graph);
+         this.aestheticsGraphView.getHolder().addCallback(this);
+         this.aestheticsGraphView.setWillNotDraw(false);
++
++        this.aestheticsGraphView2 = mainActivity.findViewById(R.id.indicator_graph_2);
++        this.aestheticsGraphView2.getHolder().addCallback(this);
++        this.aestheticsGraphView2.setWillNotDraw(false);
+     }
+ 
+     public AestheticsGraphView getSurface(){
+         return this.aestheticsGraphView;
+     }
++    public AestheticsGraphView getSurface2(){
++        return this.aestheticsGraphView2;
++    }
+ 
+     public boolean hasSurface(){
+         return has_surface;
+diff --git a/app/src/main/java/net/sourceforge/opencamera/AestheticsIndicator.java b/app/src/main/java/net/sourceforge/opencamera/AestheticsIndicator.java
+index 6c9a8875..c29177bc 100644
+--- a/app/src/main/java/net/sourceforge/opencamera/AestheticsIndicator.java
++++ b/app/src/main/java/net/sourceforge/opencamera/AestheticsIndicator.java
+@@ -9,6 +9,7 @@ import net.sourceforge.opencamera.ui.AestheticsIndicatorView;
+ public class AestheticsIndicator implements SurfaceHolder.Callback {
+ 
+     private AestheticsIndicatorView aestheticsIndicatorView;
++    private AestheticsIndicatorView aestheticsIndicatorView2;
+     private MainActivity mainActivity;
+ 
+     private boolean has_surface;
+@@ -18,12 +19,20 @@ public class AestheticsIndicator implements SurfaceHolder.Callback {
+         this.aestheticsIndicatorView = mainActivity.findViewById(R.id.aesthetics_indicator_view);
+         this.aestheticsIndicatorView.getHolder().addCallback(this);
+         this.aestheticsIndicatorView.setWillNotDraw(false);
++
++        this.aestheticsIndicatorView2 = mainActivity.findViewById(R.id.aesthetics_indicator_view_2);
++        this.aestheticsIndicatorView2.getHolder().addCallback(this);
++        this.aestheticsIndicatorView2.setWillNotDraw(false);
+     }
+ 
+     public AestheticsIndicatorView getSurface(){
+         return this.aestheticsIndicatorView;
+     }
+ 
++    public AestheticsIndicatorView getSurface2(){
++        return this.aestheticsIndicatorView2;
++    }
++
+     public boolean hasSurface(){
+         return has_surface;
+     }
+diff --git a/app/src/main/java/net/sourceforge/opencamera/MyPreferenceFragment.java b/app/src/main/java/net/sourceforge/opencamera/MyPreferenceFragment.java
+index 3b41b99b..cd47ea04 100644
+--- a/app/src/main/java/net/sourceforge/opencamera/MyPreferenceFragment.java
++++ b/app/src/main/java/net/sourceforge/opencamera/MyPreferenceFragment.java
+@@ -1734,7 +1734,7 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
+                 public boolean onPreferenceChange(Preference arg0, Object newValue) {
+                     MainActivity main_activity = (MainActivity)MyPreferenceFragment.this.getActivity();
+                     AestheticsApplicationInterface aai = (AestheticsApplicationInterface)main_activity.getApplicationInterface();
+-                    aai.setModel((String) newValue);
++                    //aai.setModel((String) newValue);
+                     return true;
+                 }
+             });
+diff --git a/app/src/main/java/net/sourceforge/opencamera/ui/DrawAestheticsIndicator.java b/app/src/main/java/net/sourceforge/opencamera/ui/DrawAestheticsIndicator.java
+index f2f0a5bb..76fa85fd 100644
+--- a/app/src/main/java/net/sourceforge/opencamera/ui/DrawAestheticsIndicator.java
++++ b/app/src/main/java/net/sourceforge/opencamera/ui/DrawAestheticsIndicator.java
+@@ -127,6 +127,22 @@ public class DrawAestheticsIndicator {
+             this.drawGraph(c, scores, newestScorePosition, drawLine, applicationInterface.threshold);
+             holder.unlockCanvasAndPost(c);
+         }
++        if(this.applicationInterface.getAestheticsIndicatorView2().getVisibility() == View.VISIBLE) {
++            holder = this.applicationInterface.getAestheticsIndicatorView2().getHolder();
++            c = holder.lockCanvas();
++            this.drawIndicator(c, scores[newestScorePosition]);
++            holder.unlockCanvasAndPost(c);
++            drawLine = true;
++        }
++        if(this.applicationInterface.getAestheticsGraphView2().getVisibility() == View.VISIBLE) {
++            holder = this.applicationInterface.getAestheticsGraphView2().getHolder();
++            c = holder.lockCanvas();
++            this.drawGraph(c, scores, newestScorePosition, drawLine, applicationInterface.threshold);
++            holder.unlockCanvasAndPost(c);
++        }
+     }
+ 
++
++
++
+ }
+diff --git a/app/src/main/java/net/sourceforge/opencamera/ui/MainUI.java b/app/src/main/java/net/sourceforge/opencamera/ui/MainUI.java
+index 11e15d6e..c5f59c1a 100644
+--- a/app/src/main/java/net/sourceforge/opencamera/ui/MainUI.java
++++ b/app/src/main/java/net/sourceforge/opencamera/ui/MainUI.java
+@@ -401,6 +401,7 @@ public class MainUI {
+             // we use a dummy button, so that the GUI buttons keep their positioning even if the Settings button is hidden (visibility set to View.GONE)
+             View view = main_activity.findViewById(R.id.gui_anchor);
+             RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
++            RelativeLayout.LayoutParams layoutParams2 = (RelativeLayout.LayoutParams)view.getLayoutParams();
+             layoutParams.addRule(iconpanel_align_parent_left, 0);
+             layoutParams.addRule(iconpanel_align_parent_right, RelativeLayout.TRUE);
+             layoutParams.addRule(iconpanel_align_parent_top, RelativeLayout.TRUE);
+@@ -551,6 +552,9 @@ public class MainUI {
+                 // shouldn't change it's size, which isn't necessarily button_size)
+                 view = main_activity.findViewById(R.id.gallery);
+                 layoutParams = (RelativeLayout.LayoutParams) view.getLayoutParams();
++                layoutParams2 = (RelativeLayout.LayoutParams) view.getLayoutParams();
++
++
+                 setMarginsForSystemUI(layoutParams, 0, gallery_top_gap, gallery_navigation_gap, 0);
+                 view.setLayoutParams(layoutParams);
+                 for(View this_view : buttons_permanent) {
+@@ -567,16 +571,6 @@ public class MainUI {
+             // end icon panel
+ 
+             view = (View)main_activity.findViewById(R.id.indicator_graph);
+-            layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
+-            layoutParams.addRule(align_parent_left, 0);
+-            layoutParams.addRule(align_parent_right,0);
+-            layoutParams.addRule(align_parent_top, 0);
+-            layoutParams.addRule(align_parent_bottom, 0);
+-            layoutParams.addRule(ui_independent_above, 0);
+-            layoutParams.addRule(ui_independent_below, 0);
+-            layoutParams.addRule(ui_independent_left_of, 0);
+-            layoutParams.addRule(ui_independent_right_of, 0);
+-            view.setLayoutParams(layoutParams);
+             //if(system_orientation_portrait) {
+             //    setViewRotation(view, ui_rotation);
+             //} else{
+@@ -585,10 +579,22 @@ public class MainUI {
+ 
+             AestheticsApplicationInterface aai = (AestheticsApplicationInterface) main_activity.getApplicationInterface();
+             view = aai.getAestheticsGraphView();
+-            view.setVisibility(
+-                    sharedPreferences.getBoolean("preference_aesthetics_indicator", false)
+-                            ? View.VISIBLE : View.INVISIBLE
+-            );
++            view.setVisibility(View.VISIBLE);
++            // END INDICATOR One
++
++            view = (View)main_activity.findViewById(R.id.indicator_graph_2);
++
++            //if(system_orientation_portrait) {
++            //    setViewRotation(view, ui_rotation);
++            //} else{
++            //    setViewRotation(view, (ui_rotation + 180) % 360);
++            //}
++
++            AestheticsApplicationInterface aai2 = (AestheticsApplicationInterface) main_activity.getApplicationInterface();
++            view = aai2.getAestheticsGraphView2();
++            view.setVisibility(View.VISIBLE);
++
++
+ 
+             view = main_activity.findViewById(R.id.take_photo_or_aesthetics);
+             layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
+@@ -621,6 +627,13 @@ public class MainUI {
+                             ? View.VISIBLE : View.GONE
+             );
+ 
++
++            view = aai.getAestheticsIndicatorView2();
++            view.setVisibility(
++                    sharedPreferences.getBoolean("preference_aesthetics_mode", false)
++                            ? View.VISIBLE : View.GONE
++            );
++
+             view = main_activity.findViewById(R.id.switch_camera);
+             layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
+             layoutParams.addRule(align_parent_left, 0);
+diff --git a/app/src/main/res/layout/activity_main.xml b/app/src/main/res/layout/activity_main.xml
+index dd8b0b3b..1b81975a 100644
+--- a/app/src/main/res/layout/activity_main.xml
++++ b/app/src/main/res/layout/activity_main.xml
+@@ -5,11 +5,12 @@
+     android:layout_height="match_parent"
+     tools:context=".MainActivity" >
+ 
+-    <FrameLayout
++    <RelativeLayout
+         android:id="@+id/take_photo_or_aesthetics"
+         android:layout_width="100dp"
+-        android:layout_height="100dp"
++        android:layout_height="wrap_content"
+         android:layout_centerInParent="true">
++
+         <ImageButton
+             android:id="@+id/take_photo"
+             android:layout_width="100dp"
+@@ -21,6 +22,7 @@
+             android:onClick="clickedTakePhoto"
+             android:background="@null"
+             />
++
+         <net.sourceforge.opencamera.ui.AestheticsIndicatorView
+             android:id="@+id/aesthetics_indicator_view"
+             android:layout_width="100dp"
+@@ -28,8 +30,20 @@
+             android:padding="10dp"
+             android:scaleType="fitCenter"
+             android:contentDescription="shows the aesthetics rating"
++            android:layout_below="@id/take_photo"
++            />
++
++       <net.sourceforge.opencamera.ui.AestheticsIndicatorView
++            android:id="@+id/aesthetics_indicator_view_2"
++            android:layout_width="100dp"
++            android:layout_height="100dp"
++            android:padding="10dp"
++            android:scaleType="fitEnd"
++            android:contentDescription="shows the aesthetics rating"
++            android:layout_below="@id/aesthetics_indicator_view"
+             />
+-    </FrameLayout>
++
++    </RelativeLayout>
+ 
+ 
+ 
+@@ -58,6 +72,18 @@
+             android:visibility="gone"
+             android:contentDescription="shows the aesthetics rating over time"
+             />
++        <net.sourceforge.opencamera.ui.AestheticsGraphView
++            android:id="@+id/indicator_graph_2"
++            android:layout_centerInParent="false"
++            android:layout_width="400dp"
++            android:layout_height="30dp"
++            android:paddingLeft="15dp"
++            android:paddingRight="15dp"
++            android:paddingTop="1dp"
++            android:paddingBottom="1dp"
++            android:visibility="gone"
++            android:contentDescription="shows the aesthetics rating over time"
++            />
+     </RelativeLayout>
+ 
+     <ImageButton

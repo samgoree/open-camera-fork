@@ -51,6 +51,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
 
 
     public float threshold;
+    public float threshold2;
     public boolean show_message = false;
     public String message_text = "";
     private HashMap<String,String> model_to_name;
@@ -60,7 +61,10 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
     public static int rollingAverageLength = 10;
     public static float thresholdRatio = 1.1f;
     private float[] previous_scores;
+    private float[] previous_scores_2;
+
     private int previous_scores_position;
+    private int previous_scores_position_2;
 
     private DrawPreview drawPreview;
 
@@ -68,6 +72,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
 
     private Bitmap bitmap = null;
     private Module module = null;
+    private Module module2 = null;
     private MainActivity main_activity = null;
     private Thread classify_thread;
     private boolean paused;
@@ -78,8 +83,12 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
 
 
     private AestheticsIndicator aestheticsIndicator;
+    private AestheticsIndicator aestheticsIndicator2;
     private AestheticsGraph aestheticsGraph;
+    private AestheticsGraph aestheticsGraph2;
+
     private DrawAestheticsIndicator drawAestheticsIndicator;
+    private DrawAestheticsIndicator drawAestheticsIndicator2;
 
 
     public AestheticsApplicationInterface(MainActivity main_activity, Bundle savedInstanceState) throws IOException {
@@ -90,8 +99,11 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
 
         this.aestheticsIndicator = new AestheticsIndicator( this, this.main_activity);
         this.aestheticsGraph = new AestheticsGraph(this, this.main_activity);
+        this.aestheticsIndicator2 = new AestheticsIndicator(this, this.main_activity);
+        this.aestheticsGraph2 = new AestheticsGraph(this, this.main_activity);
 
         this.drawAestheticsIndicator = new DrawAestheticsIndicator(main_activity, this, this.aestheticsIndicator, this.aestheticsGraph);
+        this.drawAestheticsIndicator2 = new DrawAestheticsIndicator(main_activity, this, this.aestheticsIndicator2, this.aestheticsGraph2);
         this.safe_to_take_photo = true;
         this.classify_thread = null;
         this.paused = false;
@@ -107,16 +119,20 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
             this.model_to_name.put(model_files[i], model_names[i]);
         }
 
-        this.setModel(sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt"));
+        this.setModel("blur.pt", "classical.pt");
 
         this.initialize_scores();
     }
 
     private void initialize_scores(){
         this.previous_scores = new float[rollingAverageLength * 2];
-        for(int i=0;i<rollingAverageLength * 2;i++){ this.previous_scores[i] = 10000f; };
+        this.previous_scores_2 = new float[rollingAverageLength * 2];
+        for(int i=0;i<rollingAverageLength * 2;i++){ this.previous_scores[i] = 10000f; this.previous_scores_2[i] = 10000f;};
         previous_scores_position = 10;
+        previous_scores_position_2 = 10;
         this.threshold = 10000f * thresholdRatio;
+        this.threshold2 = 10000f * thresholdRatio;
+
     }
 
     public String getSaveText(){
@@ -139,7 +155,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         return mode + "_" + modelName;
     }
 
-    private float classify(byte[] data){
+    private float classify(byte[] data, String modelName){
 
         Bitmap resizedBitmap = decode_small_bitmap(data);
         final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
@@ -147,14 +163,22 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                 new float[]{0.0f, 0.0f, 0.0f},
                 new float[]{1.0f, 1.0f, 1.0f},
                 MemoryFormat.CHANNELS_LAST);
-        
-        final Tensor outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
 
+        final Tensor outputTensor;
+
+        if (modelName.equals("blur.pt")){
+            outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
+        }
+        else {
+            outputTensor = module2.forward(IValue.from(inputTensor)).toTensor();
+        }
         // getting tensor content as java array of floats
         final float[] scores = outputTensor.getDataAsFloatArray();
 
         return scores[0];
     }
+
+
 
     private float classify_lu(byte[] data){
 
@@ -380,22 +404,50 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                                 public void onPictureTaken(byte[] data) {
 
                                     float value = 0;
-                                    String model_file_name = sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt");
+                                    float value2 = 0;
+                                    String model_file_name = "blur.pt";
+                                    String model2_file_name = "classical.pt";
                                     if (model_file_name.equals("deep.pt")) {
 
                                         value = classify_lu(data);
                                     } else if (model_file_name.equals("mpada.pt")) {
                                         value = classify_sheng(data);
+
                                     } else if (model_file_name.equals("resnet.pt")) {
                                         value = classify_resnet(data);
+
                                     }else if (model_file_name.equals("blur.pt")) {
-                                        value = classify(data);
+                                        value = classify(data, model_file_name);
+
                                         // subtract off mean, divide by 1/4 the std, add 0.5
                                         value = 0.5f + (value - 0.0245681f) / (0.0405277f * 4) ;
+
                                     } else{ // classical
-                                        value = classify(data);
+                                        value = classify(data, model_file_name);
+
                                         // subtract off mean, divide by 1/4 the std, add 0.5
                                         value = 0.5f + (value - 0.7179374f) / (0.0306888f * 4) ;
+
+                                    }
+
+                                    if (model2_file_name.equals("deep.pt")) {
+
+                                        value2 = classify_lu(data);
+                                    } else if (model2_file_name.equals("mpada.pt")) {
+
+                                        value2 = classify_sheng(data);
+                                    } else if (model2_file_name.equals("resnet.pt")) {
+
+                                        value2 = classify_sheng(data);
+                                    }else if (model2_file_name.equals("blur.pt")) {
+
+                                        value2 = classify(data, model2_file_name);
+                                        // subtract off mean, divide by 1/4 the std, add 0.5
+                                        value2 = 0.5f + (value2 - 0.0245681f) / (0.0405277f * 4) ;
+                                    } else{ // classical
+                                        value2 = classify(data, model2_file_name);
+                                        // subtract off mean, divide by 1/4 the std, add 0.5
+                                        value2 = 0.5f + (value2 - 0.0245681f) / (0.0405277f * 4) ;
                                     }
 
                                     //show_message = true;
@@ -409,7 +461,8 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                                     }
                                     // the value we subtract off isn't necessarily the same as the new value
                                     // it will be rollingAverageLength behind where we currently are in the list
-                                    float subtractedValue = previous_scores[(previous_scores_position - rollingAverageLength + previous_scores.length) % previous_scores.length];
+                                    float subtractedValue = previous_scores[
+                                            (previous_scores_position - rollingAverageLength + previous_scores.length) % previous_scores.length];
                                     threshold -= subtractedValue * thresholdRatio / rollingAverageLength;
                                     threshold += value * thresholdRatio / rollingAverageLength;
                                     previous_scores[previous_scores_position] = value;
@@ -417,6 +470,19 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                                     previous_scores_position = (previous_scores_position + 1) % previous_scores.length;
                                     if (MyDebug.LOG)
                                         Log.d(TAG, "Value:" + Float.toString(value) + " threshold:" + Float.toString(threshold));
+                                    // DUPLICATING THE ABOVE POSITION CODE ^. CREATING ANOTHER AESTHETICS GRAPH. 2 AT THE SAME TIME.
+
+                                    float subtractedValue2 = previous_scores_2[
+                                            (previous_scores_position_2 - rollingAverageLength + previous_scores_2.length) % previous_scores_2.length];
+                                    threshold2 -= subtractedValue2 * thresholdRatio / rollingAverageLength;
+                                    threshold2 += value2 * thresholdRatio / rollingAverageLength;
+                                    previous_scores_2[previous_scores_position_2] = value2;
+                                    drawAestheticsIndicator2.draw(previous_scores_2, previous_scores_position_2);
+                                    previous_scores_position_2 = (previous_scores_position_2 + 1) % previous_scores_2.length;
+                                    if (MyDebug.LOG)
+                                        Log.d(TAG, "Value:" + Float.toString(value2) + " threshold:" + Float.toString(threshold2));
+
+                                    drawAestheticsIndicator.draw(previous_scores, previous_scores_2, previous_scores_position, previous_scores_position_2);
 
                                     List<byte []> images = new ArrayList<>();
                                     images.add(data);
@@ -428,6 +494,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                                 updateThumbnail(thumbnail, false);*/
                                     this.onCompleted();
                                 }
+
 
                                 public void onStarted() {
                                     if (MyDebug.LOG)
@@ -561,11 +628,11 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
             //        new float[] {0.0f, 0.0f, 0.0f},
             //        new float[] {1.0f, 1.0f, 1.0f},
             //        MemoryFormat.CHANNELS_LAST);
-            float value = classify(images.get(i));
-            if (value > max_quality){
-                max_quality = value;
-                max_quality_ind = i;
-            }
+            //float value = classify(images.get(i));
+            //if (value > max_quality){
+            //    max_quality = value;
+            //    max_quality_ind = i;
+            //}
         }
         //show_message = true;
         //message_text = "Saving image: " + Integer.toString(max_quality_ind + 1);
@@ -619,7 +686,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         return this.sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false);
     }
 
-    public void setModel(String newModelPath){
+    public void setModel(String newModelPath, String newModelPath2){
         boolean resume;
         if(classify_thread != null && classify_thread.isAlive()) {
             pause_take_photo_and_classify();
@@ -627,6 +694,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         } else resume = false;
         try {
             this.module = LiteModuleLoader.load(assetFilePath(this.main_activity, newModelPath));
+            this.module2 = LiteModuleLoader.load(assetFilePath(this.main_activity, newModelPath2));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -639,5 +707,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
     }
 
     public AestheticsIndicatorView getAestheticsIndicatorView(){ return this.aestheticsIndicator.getSurface();}
+    public AestheticsIndicatorView getAestheticsIndicatorView2(){ return this.aestheticsIndicator2.getSurface();}
     public AestheticsGraphView getAestheticsGraphView(){ return this.aestheticsGraph.getSurface();}
+    public AestheticsGraphView getAestheticsGraphView2(){ return this.aestheticsGraph2.getSurface();}
 }

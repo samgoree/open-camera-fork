@@ -9,6 +9,7 @@ import net.sourceforge.opencamera.ui.AestheticsIndicatorView;
 
 public class AestheticsGraph implements SurfaceHolder.Callback{
     private AestheticsGraphView aestheticsGraphView;
+    private AestheticsGraphView aestheticsGraphView2;
     private MainActivity mainActivity;
 
     private boolean has_surface;
@@ -18,10 +19,17 @@ public class AestheticsGraph implements SurfaceHolder.Callback{
         this.aestheticsGraphView = mainActivity.findViewById(R.id.indicator_graph);
         this.aestheticsGraphView.getHolder().addCallback(this);
         this.aestheticsGraphView.setWillNotDraw(false);
+
+        this.aestheticsGraphView2 = mainActivity.findViewById(R.id.indicator_graph_2);
+        this.aestheticsGraphView2.getHolder().addCallback(this);
+        this.aestheticsGraphView2.setWillNotDraw(false);
     }
 
     public AestheticsGraphView getSurface(){
         return this.aestheticsGraphView;
+    }
+    public AestheticsGraphView getSurface2(){
+        return this.aestheticsGraphView2;
     }
 
     public boolean hasSurface(){

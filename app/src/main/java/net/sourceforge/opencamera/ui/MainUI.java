@@ -401,6 +401,7 @@ public class MainUI {
             // we use a dummy button, so that the GUI buttons keep their positioning even if the Settings button is hidden (visibility set to View.GONE)
             View view = main_activity.findViewById(R.id.gui_anchor);
             RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
+            RelativeLayout.LayoutParams layoutParams2 = (RelativeLayout.LayoutParams)view.getLayoutParams();
             layoutParams.addRule(iconpanel_align_parent_left, 0);
             layoutParams.addRule(iconpanel_align_parent_right, RelativeLayout.TRUE);
             layoutParams.addRule(iconpanel_align_parent_top, RelativeLayout.TRUE);
@@ -551,6 +552,9 @@ public class MainUI {
                 // shouldn't change it's size, which isn't necessarily button_size)
                 view = main_activity.findViewById(R.id.gallery);
                 layoutParams = (RelativeLayout.LayoutParams) view.getLayoutParams();
+                layoutParams2 = (RelativeLayout.LayoutParams) view.getLayoutParams();
+
+
                 setMarginsForSystemUI(layoutParams, 0, gallery_top_gap, gallery_navigation_gap, 0);
                 view.setLayoutParams(layoutParams);
                 for(View this_view : buttons_permanent) {
@@ -567,16 +571,6 @@ public class MainUI {
             // end icon panel
 
             view = (View)main_activity.findViewById(R.id.indicator_graph);
-            layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
-            layoutParams.addRule(align_parent_left, 0);
-            layoutParams.addRule(align_parent_right,0);
-            layoutParams.addRule(align_parent_top, 0);
-            layoutParams.addRule(align_parent_bottom, 0);
-            layoutParams.addRule(ui_independent_above, 0);
-            layoutParams.addRule(ui_independent_below, 0);
-            layoutParams.addRule(ui_independent_left_of, 0);
-            layoutParams.addRule(ui_independent_right_of, 0);
-            view.setLayoutParams(layoutParams);
             //if(system_orientation_portrait) {
             //    setViewRotation(view, ui_rotation);
             //} else{
@@ -585,10 +579,22 @@ public class MainUI {
 
             AestheticsApplicationInterface aai = (AestheticsApplicationInterface) main_activity.getApplicationInterface();
             view = aai.getAestheticsGraphView();
-            view.setVisibility(
-                    sharedPreferences.getBoolean("preference_aesthetics_indicator", false)
-                            ? View.VISIBLE : View.INVISIBLE
-            );
+            view.setVisibility(View.VISIBLE);
+            // END INDICATOR One
+
+            view = (View)main_activity.findViewById(R.id.indicator_graph_2);
+
+            //if(system_orientation_portrait) {
+            //    setViewRotation(view, ui_rotation);
+            //} else{
+            //    setViewRotation(view, (ui_rotation + 180) % 360);
+            //}
+
+            AestheticsApplicationInterface aai2 = (AestheticsApplicationInterface) main_activity.getApplicationInterface();
+            view = aai2.getAestheticsGraphView2();
+            view.setVisibility(View.VISIBLE);
+
+
 
             view = main_activity.findViewById(R.id.take_photo_or_aesthetics);
             layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
@@ -616,6 +622,13 @@ public class MainUI {
 
             aai = (AestheticsApplicationInterface) main_activity.getApplicationInterface();
             view = aai.getAestheticsIndicatorView();
+            view.setVisibility(
+                    sharedPreferences.getBoolean("preference_aesthetics_mode", false)
+                            ? View.VISIBLE : View.GONE
+            );
+
+
+            view = aai.getAestheticsIndicatorView2();
             view.setVisibility(
                     sharedPreferences.getBoolean("preference_aesthetics_mode", false)
                             ? View.VISIBLE : View.GONE

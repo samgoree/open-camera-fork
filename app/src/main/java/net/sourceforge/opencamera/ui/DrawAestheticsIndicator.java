@@ -110,7 +110,7 @@ public class DrawAestheticsIndicator {
         }
     }
 
-    public void draw(float[] scores, int newestScorePosition){
+    public void draw(float[] scores1, float[] scores2, int newestScorePosition1, int newestScorePosition2){
         SurfaceHolder holder;
         Canvas c;
         boolean drawLine = false;
@@ -127,6 +127,22 @@ public class DrawAestheticsIndicator {
             this.drawGraph(c, scores, newestScorePosition, drawLine, applicationInterface.threshold);
             holder.unlockCanvasAndPost(c);
         }
+        if(this.applicationInterface.getAestheticsIndicatorView2().getVisibility() == View.VISIBLE) {
+            holder = this.applicationInterface.getAestheticsIndicatorView2().getHolder();
+            c = holder.lockCanvas();
+            this.drawIndicator(c, scores[newestScorePosition]);
+            holder.unlockCanvasAndPost(c);
+            drawLine = true;
+        }
+        if(this.applicationInterface.getAestheticsGraphView2().getVisibility() == View.VISIBLE) {
+            holder = this.applicationInterface.getAestheticsGraphView2().getHolder();
+            c = holder.lockCanvas();
+            this.drawGraph(c, scores, newestScorePosition, drawLine, applicationInterface.threshold2);
+            holder.unlockCanvasAndPost(c);
+        }
     }
+
+
+
 
 }
