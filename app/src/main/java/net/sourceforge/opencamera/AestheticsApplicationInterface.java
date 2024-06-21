@@ -54,6 +54,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
     public float threshold2;
     public boolean show_message = false;
     public String message_text = "";
+    public String message_text_2 = "";
     private HashMap<String,String> model_to_name;
     public float aesthetics_score = 0;
     private boolean safe_to_take_photo;
@@ -447,7 +448,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                                     } else{ // classical
                                         value2 = classify(data, model2_file_name);
                                         // subtract off mean, divide by 1/4 the std, add 0.5
-                                        value2 = 0.5f + (value2 - 0.0245681f) / (0.0405277f * 4) ;
+                                        //value2 = 0.5f + (value2 - 0.0245681f) / (0.0405277f * 4) ;
                                     }
 
                                     //show_message = true;
@@ -466,7 +467,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                                     threshold -= subtractedValue * thresholdRatio / rollingAverageLength;
                                     threshold += value * thresholdRatio / rollingAverageLength;
                                     previous_scores[previous_scores_position] = value;
-                                    drawAestheticsIndicator.draw(previous_scores, previous_scores_position);
+                                    //drawAestheticsIndicator.draw(previous_scores, previous_scores_position);
                                     previous_scores_position = (previous_scores_position + 1) % previous_scores.length;
                                     if (MyDebug.LOG)
                                         Log.d(TAG, "Value:" + Float.toString(value) + " threshold:" + Float.toString(threshold));
@@ -477,7 +478,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                                     threshold2 -= subtractedValue2 * thresholdRatio / rollingAverageLength;
                                     threshold2 += value2 * thresholdRatio / rollingAverageLength;
                                     previous_scores_2[previous_scores_position_2] = value2;
-                                    drawAestheticsIndicator2.draw(previous_scores_2, previous_scores_position_2);
+                                    //drawAestheticsIndicator2.draw(previous_scores_2, previous_scores_position_2);
                                     previous_scores_position_2 = (previous_scores_position_2 + 1) % previous_scores_2.length;
                                     if (MyDebug.LOG)
                                         Log.d(TAG, "Value:" + Float.toString(value2) + " threshold:" + Float.toString(threshold2));
@@ -704,6 +705,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         }
 
         message_text = (String)model_to_name.get(newModelPath);
+        message_text_2 = (String)model_to_name.get(newModelPath2);
     }
 
     public AestheticsIndicatorView getAestheticsIndicatorView(){ return this.aestheticsIndicator.getSurface();}

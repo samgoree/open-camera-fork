@@ -53,7 +53,7 @@ public class DrawAestheticsIndicator {
         canvas.drawPath(path, paint);
     }
 
-    public void drawIndicator(Canvas canvas, float score) {
+    public void drawIndicator(Canvas canvas, float score, float score2){
         canvas.drawARGB(255,0,0,0);
 
         /*Paint p = new Paint();
@@ -81,12 +81,11 @@ public class DrawAestheticsIndicator {
         return size * (value - graph_x_min) / (graph_x_max - graph_x_min);
     }
 
-    public void drawGraph(Canvas canvas, float[] score, int startPosition, boolean drawLine, float lineHeight){
+    public void drawGraph(Canvas canvas, float[] score, float[] score2, int startPosition, int startPosition2, boolean drawLine, float lineHeight, float lineHeight2){
         Paint p = new Paint();
         canvas.drawARGB(255,0,0,0);
 
-
-        p.setShader(new LinearGradient(0, 0, 0, canvas.getHeight(), edge_color, center_color, Shader.TileMode.CLAMP));
+        p.setShader(new LinearGradient(0, 0, 0, canvas.getHeight()/2, edge_color, center_color, Shader.TileMode.CLAMP));
 
         this.graph_x_max = score.length;
         int currentPosition = startPosition;
@@ -98,46 +97,55 @@ public class DrawAestheticsIndicator {
             if(score[currentPosition] == 10000) continue;
             drawTrapezoid(canvas, p,
                     valueToXCoordinate((float)i, canvas),
-                    canvas.getHeight(),
+                    canvas.getHeight()/2,
                     valueToXCoordinate((float)i+1, canvas),
-                    valueToYCoordinate((float) Math.pow(score[currentPosition],2), canvas),
-                    valueToYCoordinate((float) Math.pow(score[nextPosition],2), canvas));
+                    valueToYCoordinate((float) Math.pow(score[currentPosition],2), canvas)/2,
+                    valueToYCoordinate((float) Math.pow(score[nextPosition],2), canvas)/2);
         }
         if(drawLine) {
             p.setColor(Color.argb(255, 100, 120, 200));
             p.setShader(null);
-            canvas.drawLine(0, valueToYCoordinate(lineHeight, canvas), valueToXCoordinate((float) score.length, canvas), valueToYCoordinate(lineHeight, canvas), p);
+            canvas.drawLine(0, valueToYCoordinate(lineHeight, canvas)/2, valueToXCoordinate((float) score.length, canvas), valueToYCoordinate(lineHeight, canvas)/2, p);
+        }
+
+        // Draw the second graph
+        p.setShader(new LinearGradient(0, canvas.getHeight()/2, 0, canvas.getHeight(), edge_color, center_color, Shader.TileMode.CLAMP));
+        currentPosition = startPosition2;
+        nextPosition = (startPosition2 + 1) % score2.length;
+
+        for(int i = 0; i < score2.length-1; i++) {
+            currentPosition = nextPosition;
+            nextPosition = (nextPosition + 1) % score2.length;
+            if(score2[currentPosition] == 10000) continue;
+            drawTrapezoid(canvas, p,
+                    valueToXCoordinate((float)i, canvas),
+                    canvas.getHeight(),
+                    valueToXCoordinate((float)i+1, canvas),
+                    valueToYCoordinate((float) Math.pow(score2[currentPosition],2), canvas)/2 + canvas.getHeight()/2,
+                    valueToYCoordinate((float) Math.pow(score2[nextPosition],2), canvas)/2 + canvas.getHeight()/2);
+        }
+        if(drawLine) {
+            p.setColor(Color.argb(255, 100, 120, 200));
+            p.setShader(null);
+            canvas.drawLine(0, valueToYCoordinate(lineHeight2, canvas)/2 + canvas.getHeight()/2, valueToXCoordinate((float) score2.length, canvas), valueToYCoordinate(lineHeight2, canvas)/2 + canvas.getHeight()/2, p);
         }
     }
 
-    public void draw(float[] scores1, float[] scores2, int newestScorePosition1, int newestScorePosition2){
+    public void draw(float[] scores, float[] scores2, int newestScorePosition, int newestScorePosition2){
         SurfaceHolder holder;
         Canvas c;
         boolean drawLine = false;
         if(this.applicationInterface.getAestheticsIndicatorView().getVisibility() == View.VISIBLE) {
             holder = this.applicationInterface.getAestheticsIndicatorView().getHolder();
             c = holder.lockCanvas();
-            this.drawIndicator(c, scores[newestScorePosition]);
+            this.drawIndicator(c, scores[newestScorePosition], scores2[newestScorePosition2]);
             holder.unlockCanvasAndPost(c);
             drawLine = true;
         }
         if(this.applicationInterface.getAestheticsGraphView().getVisibility() == View.VISIBLE) {
             holder = this.applicationInterface.getAestheticsGraphView().getHolder();
             c = holder.lockCanvas();
-            this.drawGraph(c, scores, newestScorePosition, drawLine, applicationInterface.threshold);
-            holder.unlockCanvasAndPost(c);
-        }
-        if(this.applicationInterface.getAestheticsIndicatorView2().getVisibility() == View.VISIBLE) {
-            holder = this.applicationInterface.getAestheticsIndicatorView2().getHolder();
-            c = holder.lockCanvas();
-            this.drawIndicator(c, scores[newestScorePosition]);
-            holder.unlockCanvasAndPost(c);
-            drawLine = true;
-        }
-        if(this.applicationInterface.getAestheticsGraphView2().getVisibility() == View.VISIBLE) {
-            holder = this.applicationInterface.getAestheticsGraphView2().getHolder();
-            c = holder.lockCanvas();
-            this.drawGraph(c, scores, newestScorePosition, drawLine, applicationInterface.threshold2);
+            this.drawGraph(c, scores, scores2, newestScorePosition, newestScorePosition2, drawLine, applicationInterface.threshold, applicationInterface.threshold2);
             holder.unlockCanvasAndPost(c);
         }
     }
