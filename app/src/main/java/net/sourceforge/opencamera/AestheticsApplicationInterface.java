@@ -120,7 +120,8 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
             this.model_to_name.put(model_files[i], model_names[i]);
         }
 
-        this.setModel("blur.pt", "classical.pt");
+        this.setModel(sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt"));
+        this.setModel2(sharedPreferences.getString(PreferenceKeys.AestheticsModelKey2, "classical.pt"));
 
         this.initialize_scores();
     }
@@ -140,6 +141,8 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         //get model name
         String modelName = model_to_name.get(sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt"));
         modelName = modelName.replace(' ', '_');
+        String modelName2 = model_to_name.get(sharedPreferences.getString(PreferenceKeys.AestheticsModelKey2, "classical.pt"));
+        modelName2 = modelName2.replace(' ', '_');
         //get settings
         boolean indicator = sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false);
         boolean capture = sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false);
@@ -687,7 +690,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         return this.sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false);
     }
 
-    public void setModel(String newModelPath, String newModelPath2){
+    public void setModel(String newModelPath){
         boolean resume;
         if(classify_thread != null && classify_thread.isAlive()) {
             pause_take_photo_and_classify();
@@ -695,7 +698,6 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         } else resume = false;
         try {
             this.module = LiteModuleLoader.load(assetFilePath(this.main_activity, newModelPath));
-            this.module2 = LiteModuleLoader.load(assetFilePath(this.main_activity, newModelPath2));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -705,6 +707,24 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         }
 
         message_text = (String)model_to_name.get(newModelPath);
+    }
+
+    public void setModel2(String newModelPath2){
+        boolean resume;
+        if(classify_thread != null && classify_thread.isAlive()) {
+            pause_take_photo_and_classify();
+            resume = true;
+        } else resume = false;
+        try {
+            this.module2 = LiteModuleLoader.load(assetFilePath(this.main_activity, newModelPath2));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        this.initialize_scores();
+        if(resume) {
+            resume_take_photo_and_classify();
+        }
+
         message_text_2 = (String)model_to_name.get(newModelPath2);
     }
 

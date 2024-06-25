@@ -1734,7 +1734,19 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
                 public boolean onPreferenceChange(Preference arg0, Object newValue) {
                     MainActivity main_activity = (MainActivity)MyPreferenceFragment.this.getActivity();
                     AestheticsApplicationInterface aai = (AestheticsApplicationInterface)main_activity.getApplicationInterface();
-                    //aai.setModel((String) newValue);
+                    aai.setModel((String) newValue);
+                    return true;
+                }
+            });
+        }
+        {
+            final Preference pref2 = (Preference)findPreference(PreferenceKeys.AestheticsModelKey2);
+            pref2.setOnPreferenceChangeListener(new OnPreferenceChangeListener() {
+                @Override
+                public boolean onPreferenceChange(Preference arg0, Object newValue) {
+                    MainActivity main_activity = (MainActivity)MyPreferenceFragment.this.getActivity();
+                    AestheticsApplicationInterface aai = (AestheticsApplicationInterface)main_activity.getApplicationInterface();
+                    aai.setModel2((String) newValue);
                     return true;
                 }
             });

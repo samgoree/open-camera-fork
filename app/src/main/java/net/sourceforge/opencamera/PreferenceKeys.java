@@ -16,6 +16,7 @@ public class PreferenceKeys {
     /** which model we should use in both normal or aesthetics mode
      */
     public static final String AestheticsModelKey = "preference_aesthetics_model";
+    public static final String AestheticsModelKey2 = "preference_aesthetics_model_2";
 
     /** If this preference is set, no longer show the intro dialog.
      */
