@@ -159,8 +159,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         return mode + "_" + modelName;
     }
 
-    private float classify(byte[] data, String modelName){
-
+    private float classify(byte[] data, int model){
         Bitmap resizedBitmap = decode_small_bitmap(data);
         final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
                 resizedBitmap,
@@ -169,14 +168,11 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                 MemoryFormat.CHANNELS_LAST);
 
         final Tensor outputTensor;
-
-        if (modelName.equals("blur.pt")){
+        if(model == 0)
             outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
-        }
-        else {
+        else
             outputTensor = module2.forward(IValue.from(inputTensor)).toTensor();
-        }
-        // getting tensor content as java array of floats
+
         final float[] scores = outputTensor.getDataAsFloatArray();
 
         return scores[0];
@@ -212,9 +208,9 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         Paint paint = new Paint();
         ColorMatrixColorFilter cmcf = new ColorMatrixColorFilter(
                 new float[]{0, 0, 1, 0, 0,
-                            0, 1, 0, 0, 0,
-                            1, 0, 0, 0, 0,
-                            0, 0, 0, 1, 0}
+                        0, 1, 0, 0, 0,
+                        1, 0, 0, 0, 0,
+                        0, 0, 0, 1, 0}
         );
         paint.setColorFilter(cmcf);
         Canvas drawable = new Canvas(bitmap);
@@ -226,7 +222,12 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                 new float[]{0.225f, 0.224f, 0.229f},
                 MemoryFormat.CHANNELS_LAST);
 
-        final Tensor outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
+        final Tensor outputTensor;
+        if(model == 0)
+            outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
+        else
+            outputTensor = module2.forward(IValue.from(inputTensor)).toTensor();
+
         final float[] scores = outputTensor.getDataAsFloatArray();
 
         return (float)(Math.exp(scores[1]) / (Math.exp(scores[0]) + Math.exp(scores[1])));
@@ -253,7 +254,12 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                 new float[]{0.225f, 0.224f, 0.229f},
                 MemoryFormat.CHANNELS_LAST);
 
-        final Tensor outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
+        final Tensor outputTensor;
+        if(model == 0)
+            outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
+        else
+            outputTensor = module2.forward(IValue.from(inputTensor)).toTensor();
+
         final float[] scores = outputTensor.getDataAsFloatArray();
 
         return (float)(Math.exp(scores[1]) / (Math.exp(scores[0]) + Math.exp(scores[1])));
@@ -421,13 +427,13 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                                         value = classify_resnet(data);
 
                                     }else if (model_file_name.equals("blur.pt")) {
-                                        value = classify(data, model_file_name);
+                                        value = classify(data, 0);
 
                                         // subtract off mean, divide by 1/4 the std, add 0.5
                                         value = 0.5f + (value - 0.0245681f) / (0.0405277f * 4) ;
 
                                     } else{ // classical
-                                        value = classify(data, model_file_name);
+                                        value = classify(data, 0);
 
                                         // subtract off mean, divide by 1/4 the std, add 0.5
                                         value = 0.5f + (value - 0.7179374f) / (0.0306888f * 4) ;
@@ -445,11 +451,11 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                                         value2 = classify_sheng(data);
                                     }else if (model2_file_name.equals("blur.pt")) {
 
-                                        value2 = classify(data, model2_file_name);
+                                        value2 = classify(data, 1);
                                         // subtract off mean, divide by 1/4 the std, add 0.5
                                         value2 = 0.5f + (value2 - 0.0245681f) / (0.0405277f * 4) ;
                                     } else{ // classical
-                                        value2 = classify(data, model2_file_name);
+                                        value2 = classify(data, 1);
                                         // subtract off mean, divide by 1/4 the std, add 0.5
                                         //value2 = 0.5f + (value2 - 0.0245681f) / (0.0405277f * 4) ;
                                     }
