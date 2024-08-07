@@ -180,7 +180,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
 
 
 
-    private float classify_lu(byte[] data){
+    private float classify_lu(byte[] data, int model){
 
         Bitmap bitmap_g = decode_small_bitmap(data);
         Bitmap bitmap_l = decode_cropped_bitmap(data);
@@ -195,13 +195,18 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                 new float[]{0.19035769f, 0.18192622f, 0.19754064f},
                 MemoryFormat.CHANNELS_LAST);
 
-        final Tensor outputTensor = module.forward(IValue.from(inputTensor_l), IValue.from(inputTensor_g)).toTensor();
+        final Tensor outputTensor;
+        if(model == 0)
+            outputTensor= module.forward(IValue.from(inputTensor_l), IValue.from(inputTensor_g)).toTensor();
+        else
+            outputTensor= module2.forward(IValue.from(inputTensor_l), IValue.from(inputTensor_g)).toTensor();
+
         final float[] scores = outputTensor.getDataAsFloatArray();
 
         return (float)(Math.exp(scores[1]) / (Math.exp(scores[0]) + Math.exp(scores[1])));
     }
 
-    private float classify_sheng(byte[] data){
+    private float classify_sheng(byte[] data, int model){
         Bitmap bitmap = decode_cropped_bitmap(data);
 
         //change RGB to BGR
@@ -233,7 +238,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         return (float)(Math.exp(scores[1]) / (Math.exp(scores[0]) + Math.exp(scores[1])));
     }
 
-    private float classify_resnet(byte[] data){
+    private float classify_resnet(byte[] data, int model){
         Bitmap bitmap = decode_cropped_bitmap(data);
 
         //change RGB to BGR
@@ -415,16 +420,16 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
 
                                     float value = 0;
                                     float value2 = 0;
-                                    String model_file_name = "blur.pt";
-                                    String model2_file_name = "classical.pt";
+                                    String model_file_name = sharedPreferences.getString(PreferenceKeys.AestheticsModelKey, "blur.pt");
+                                    String model2_file_name = sharedPreferences.getString(PreferenceKeys.AestheticsModelKey2, "classical.pt");
                                     if (model_file_name.equals("deep.pt")) {
 
-                                        value = classify_lu(data);
+                                        value = classify_lu(data, 0);
                                     } else if (model_file_name.equals("mpada.pt")) {
-                                        value = classify_sheng(data);
+                                        value = classify_sheng(data, 0);
 
                                     } else if (model_file_name.equals("resnet.pt")) {
-                                        value = classify_resnet(data);
+                                        value = classify_resnet(data, 0);
 
                                     }else if (model_file_name.equals("blur.pt")) {
                                         value = classify(data, 0);
@@ -442,13 +447,13 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
 
                                     if (model2_file_name.equals("deep.pt")) {
 
-                                        value2 = classify_lu(data);
+                                        value2 = classify_lu(data, 1);
                                     } else if (model2_file_name.equals("mpada.pt")) {
 
-                                        value2 = classify_sheng(data);
+                                        value2 = classify_sheng(data, 1);
                                     } else if (model2_file_name.equals("resnet.pt")) {
 
-                                        value2 = classify_sheng(data);
+                                        value2 = classify_sheng(data, 1);
                                     }else if (model2_file_name.equals("blur.pt")) {
 
                                         value2 = classify(data, 1);
@@ -494,9 +499,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
 
                                     drawAestheticsIndicator.draw(previous_scores, previous_scores_2, previous_scores_position, previous_scores_position_2);
 
-                                    List<byte []> images = new ArrayList<>();
-                                    images.add(data);
-                                    saveImageSecondary(true, images, new Date());
+
                                 /*BitmapFactory.Options opt = new BitmapFactory.Options();
                                 opt.inSampleSize = 2;
                                 Bitmap thumbnail = BitmapFactory.decodeByteArray(data, 0, data.length, opt);
@@ -722,9 +725,15 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
             resume = true;
         } else resume = false;
         try {
-            this.module2 = LiteModuleLoader.load(assetFilePath(this.main_activity, newModelPath2));
+            String assetPath = assetFilePath(this.main_activity, newModelPath2);
+            Log.d(TAG, "Loading model from: " + assetPath); // Add logging
+            this.module2 = LiteModuleLoader.load(assetPath);
+            if (this.module2 == null) {
+                Log.e(TAG, "Model2 is null after loading."); // Check if module2 is null after attempt to load
+            }
         } catch (IOException e) {
             e.printStackTrace();
+            Log.e(TAG, "Failed to load model2: " + e.getMessage()); // Detailed error logging
         }
         this.initialize_scores();
         if(resume) {

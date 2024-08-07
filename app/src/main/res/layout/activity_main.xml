@@ -93,7 +93,7 @@
         android:padding="12dp"
         android:scaleType="fitCenter"
         android:contentDescription="@string/switch_to_front_camera"
-        app:srcCompat="@drawable/baseline_switch_camera_white_48"
+        app:srcCompat="@android:drawable/menuitem_background"
         android:onClick="clickedSwitchCamera"
         android:background="@drawable/circle_background"
         android:backgroundTint="@color/icons_background_tint"
@@ -134,7 +134,7 @@
         android:padding="10dp"
         android:scaleType="fitCenter"
         android:contentDescription="@string/switch_to_video"
-        app:srcCompat="@drawable/take_video"
+        app:srcCompat="@android:drawable/menuitem_background"
         android:alpha="0.55"
         android:onClick="clickedSwitchVideo"
         android:background="@null"
@@ -214,9 +214,9 @@
         shaded background
         -->
     <ImageButton
-        android:id="@+id/gallery"
-        android:layout_width="44dp"
-        android:layout_height="44dp"
+        android:id="@+id/gallery1"
+        android:layout_width="90dp"
+        android:layout_height="90dp"
         android:padding="0dp"
         android:scaleType="fitCenter"
         android:contentDescription="@string/gallery"
@@ -224,8 +224,53 @@
         android:background="#00000000"
         android:backgroundTint="@color/icons_background_tint"
         android:backgroundTintMode="src_in"
-        android:onClick="clickedGallery"
-        />
+        android:onClick="clickedGallery" />
+
+    <ImageButton
+        android:id="@+id/gallery2"
+        android:layout_width="90dp"
+        android:layout_height="90dp"
+        android:layout_toLeftOf="@id/gallery1"
+        android:layout_alignBottom="@id/gallery1"
+        android:padding="0dp"
+        android:scaleType="fitCenter"
+        android:contentDescription="@string/gallery"
+        app:srcCompat="@drawable/baseline_photo_library_white_48"
+        android:background="#00000000"
+        android:backgroundTint="@color/icons_background_tint"
+        android:backgroundTintMode="src_in"
+        android:onClick="clickedGallery" />
+
+    <ImageButton
+        android:id="@+id/gallery3"
+        android:layout_width="90dp"
+        android:layout_height="90dp"
+        android:layout_toLeftOf="@id/gallery2"
+        android:layout_alignBottom="@id/gallery2"
+        android:padding="0dp"
+        android:scaleType="fitCenter"
+        android:contentDescription="@string/gallery"
+        app:srcCompat="@drawable/baseline_photo_library_white_48"
+        android:background="#00000000"
+        android:backgroundTint="@color/icons_background_tint"
+        android:backgroundTintMode="src_in"
+        android:onClick="clickedGallery" />
+
+    <ImageButton
+        android:id="@+id/gallery4"
+        android:layout_width="90dp"
+        android:layout_height="90dp"
+        android:layout_toLeftOf="@id/gallery3"
+        android:layout_alignBottom="@id/gallery3"
+        android:padding="0dp"
+        android:scaleType="fitCenter"
+        android:contentDescription="@string/gallery"
+        app:srcCompat="@drawable/baseline_photo_library_white_48"
+        android:background="#00000000"
+        android:backgroundTint="@color/icons_background_tint"
+        android:backgroundTintMode="src_in"
+        android:onClick="clickedGallery" />
+
 
     <ImageButton
         android:id="@+id/settings"

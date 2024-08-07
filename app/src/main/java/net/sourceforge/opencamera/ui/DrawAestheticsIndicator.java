@@ -94,7 +94,7 @@ public class DrawAestheticsIndicator {
         for(int i = 0; i < score.length-1; i++) {
             currentPosition = nextPosition;
             nextPosition = (nextPosition + 1) % score.length;
-            if(score[currentPosition] == 10000) continue;
+            if(score[nextPosition] == 0) continue;
             drawTrapezoid(canvas, p,
                     valueToXCoordinate((float)i, canvas),
                     canvas.getHeight()/2,
@@ -116,7 +116,7 @@ public class DrawAestheticsIndicator {
         for(int i = 0; i < score2.length-1; i++) {
             currentPosition = nextPosition;
             nextPosition = (nextPosition + 1) % score2.length;
-            if(score2[currentPosition] == 10000) continue;
+            if(score2[nextPosition] == 0) continue;
             drawTrapezoid(canvas, p,
                     valueToXCoordinate((float)i, canvas),
                     canvas.getHeight(),

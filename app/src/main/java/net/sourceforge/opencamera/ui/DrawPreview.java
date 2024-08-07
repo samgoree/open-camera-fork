@@ -2504,7 +2504,7 @@ public class DrawPreview {
                 thumbnail_anim_src_rect.top = 0;
                 thumbnail_anim_src_rect.right = last_thumbnail.getWidth();
                 thumbnail_anim_src_rect.bottom = last_thumbnail.getHeight();
-                View galleryButton = main_activity.findViewById(R.id.gallery);
+                View galleryButton = main_activity.findViewById(R.id.gallery1);
                 float alpha = ((float)time)/(float)duration;
 
                 int st_x = canvas.getWidth()/2;

@@ -97,6 +97,7 @@ import android.widget.ImageButton;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
+import android.widget.Switch;
 import android.widget.ZoomControls;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -192,6 +193,11 @@ public class MainActivity extends AppCompatActivity {
     // and won't be reset in subsequent tests in a suite!
     public boolean is_test; // whether called from OpenCamera.test testing
     public volatile Bitmap gallery_bitmap;
+    public volatile Bitmap gallery_bitmap2;
+    public volatile Bitmap gallery_bitmap3;
+    public volatile Bitmap gallery_bitmap4;
+    public volatile Bitmap gallery_bitmap5;
+
     public volatile boolean test_low_memory;
     public volatile boolean test_have_angle;
     public volatile float test_angle;
@@ -504,7 +510,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // set up gallery button long click
-        View galleryButton = findViewById(R.id.gallery);
+        View galleryButton = findViewById(R.id.gallery1);
         galleryButton.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
@@ -3738,7 +3744,7 @@ public class MainActivity extends AppCompatActivity {
     private void updateGalleryIconToBlank() {
         if( MyDebug.LOG )
             Log.d(TAG, "updateGalleryIconToBlank");
-        ImageButton galleryButton = this.findViewById(R.id.gallery);
+        ImageButton galleryButton = this.findViewById(R.id.gallery1);
         int bottom = galleryButton.getPaddingBottom();
         int top = galleryButton.getPaddingTop();
         int right = galleryButton.getPaddingRight();
@@ -3750,11 +3756,15 @@ public class MainActivity extends AppCompatActivity {
         // workaround for setImageResource also resetting padding, Android bug
         galleryButton.setPadding(left, top, right, bottom);
         gallery_bitmap = null;
+        gallery_bitmap2 = null;
+        gallery_bitmap3 = null;
+        gallery_bitmap4 = null;
+        gallery_bitmap5 = null;
     }
 
     /** Shows a thumbnail for the gallery icon.
      */
-    void updateGalleryIcon(Bitmap thumbnail) {
+    void updateGalleryIcon(Bitmap thumbnail, Bitmap thumbnail2, Bitmap thumbnail3, Bitmap thumbnail4) {
         if( MyDebug.LOG )
             Log.d(TAG, "updateGalleryIcon: " + thumbnail);
         // If we're currently running the background task to update the gallery (see updateGalleryIcon()), we should cancel that!
@@ -3766,9 +3776,42 @@ public class MainActivity extends AppCompatActivity {
                 Log.d(TAG, "cancel update_gallery_future");
             update_gallery_future.cancel(true);
         }
-        ImageButton galleryButton = this.findViewById(R.id.gallery);
+        ImageButton galleryButton = this.findViewById(R.id.gallery1);
+        ImageButton galleryButton2 = this.findViewById(R.id.gallery2);
+        ImageButton galleryButton3 = this.findViewById(R.id.gallery3);
+        ImageButton galleryButton4 = this.findViewById(R.id.gallery4);
+        //ImageButton galleryButton5 = this.findViewById(R.id.gallery5);
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+
+        boolean isAestheticsIndicatorEnabled = sharedPreferences.getBoolean("preference_aesthetics_indicator", false);
+        if (isAestheticsIndicatorEnabled) {
+            galleryButton.setVisibility(View.VISIBLE);
+            galleryButton2.setVisibility(View.VISIBLE);
+            galleryButton3.setVisibility(View.VISIBLE);
+            galleryButton4.setVisibility(View.VISIBLE);
+            //galleryButton5.setVisibility(View.VISIBLE);
+        } else {
+            galleryButton2.setVisibility(View.INVISIBLE);
+            galleryButton3.setVisibility(View.INVISIBLE);
+            galleryButton4.setVisibility(View.INVISIBLE);
+            //galleryButton5.setVisibility(View.INVISIBLE);
+        }
+
+
+
+
         galleryButton.setImageBitmap(thumbnail);
+        galleryButton2.setImageBitmap(thumbnail2);
+        galleryButton3.setImageBitmap(thumbnail3);
+        galleryButton4.setImageBitmap(thumbnail4);
+        //galleryButton5.setImageBitmap(thumbnail5);
+
         gallery_bitmap = thumbnail;
+        gallery_bitmap2 = thumbnail2;
+        gallery_bitmap3 = thumbnail3;
+        gallery_bitmap4 = thumbnail4;
+        //gallery_bitmap5 = thumbnail5;
     }
 
     /** Updates the gallery icon by searching for the most recent photo.
@@ -3803,120 +3846,126 @@ public class MainActivity extends AppCompatActivity {
             public void run() {
                 if( MyDebug.LOG )
                     Log.d(TAG, "doInBackground");
-                StorageUtils.Media media = applicationInterface.getStorageUtils().getLatestMedia();
-                Bitmap thumbnail = null;
+
+                // Fetch latest media and media at depth 2
+                StorageUtils.Media[] mediaArray = new StorageUtils.Media[] {
+                        applicationInterface.getStorageUtils().getMediaAtDepth(1),
+                        applicationInterface.getStorageUtils().getMediaAtDepth(2),
+                        applicationInterface.getStorageUtils().getMediaAtDepth(3),
+                        applicationInterface.getStorageUtils().getMediaAtDepth(4),
+                        applicationInterface.getStorageUtils().getMediaAtDepth(5)
+                };
+
+                Bitmap[] thumbnails = new Bitmap[5];
+
                 KeyguardManager keyguard_manager = (KeyguardManager)MainActivity.this.getSystemService(Context.KEYGUARD_SERVICE);
                 boolean is_locked = keyguard_manager != null && keyguard_manager.inKeyguardRestrictedInputMode();
                 if( MyDebug.LOG )
                     Log.d(TAG, "is_locked?: " + is_locked);
-                if( media != null && getContentResolver() != null && !is_locked ) {
-                    // check for getContentResolver() != null, as have had reported Google Play crashes
 
-                    uri = media.getMediaStoreUri(MainActivity.this);
-                    is_raw = media.filename != null && StorageUtils.filenameIsRaw(media.filename);
-                    is_video = media.video;
+                for (int i = 0; i < mediaArray.length; i++) {
+                    StorageUtils.Media media = mediaArray[i];
+                    if (media != null && getContentResolver() != null && !is_locked) {
+                        uri = media.getMediaStoreUri(MainActivity.this);
+                        is_raw = media.filename != null && StorageUtils.filenameIsRaw(media.filename);
+                        is_video = media.video;
 
-                    if( ghost_image_last && !media.video ) {
-                        if( MyDebug.LOG )
-                            Log.d(TAG, "load full size bitmap for ghost image last photo");
-                        thumbnail = loadThumbnailFromUri(media.uri, 1, media.mediastore);
-                    }
-                    if( thumbnail == null ) {
-                        try {
-                            if( !media.mediastore ) {
-                                if( media.video ) {
-                                    if( MyDebug.LOG )
-                                        Log.d(TAG, "load thumbnail for video from SAF uri");
-                                    ParcelFileDescriptor pfd_saf = null; // keep a reference to this as long as retriever, to avoid risk of pfd_saf being garbage collected
-                                    MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-                                    try {
-                                        pfd_saf = getContentResolver().openFileDescriptor(media.uri, "r");
-                                        retriever.setDataSource(pfd_saf.getFileDescriptor());
-                                        thumbnail = retriever.getFrameAtTime(-1);
-                                    }
-                                    catch(Exception e) {
-                                        Log.d(TAG, "failed to load video thumbnail");
-                                        e.printStackTrace();
-                                    }
-                                    finally {
+                        if (ghost_image_last && !media.video) {
+                            if (MyDebug.LOG)
+                                Log.d(TAG, "load full size bitmap for ghost image photo at depth " + (i + 1));
+                            thumbnails[i] = loadThumbnailFromUri(media.uri, 1, media.mediastore);
+                        }
+                        if (thumbnails[i] == null) {
+                            try {
+                                if (!media.mediastore) {
+                                    if (media.video) {
+                                        if (MyDebug.LOG)
+                                            Log.d(TAG, "load thumbnail for video from SAF uri");
+                                        ParcelFileDescriptor pfd_saf = null;
+                                        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
                                         try {
-                                            retriever.release();
-                                        }
-                                        catch(RuntimeException ex) {
-                                            // ignore
-                                        }
-                                        try {
-                                            if( pfd_saf != null ) {
-                                                pfd_saf.close();
+                                            pfd_saf = getContentResolver().openFileDescriptor(media.uri, "r");
+                                            retriever.setDataSource(pfd_saf.getFileDescriptor());
+                                            thumbnails[i] = retriever.getFrameAtTime(-1);
+                                        } catch (Exception e) {
+                                            Log.d(TAG, "failed to load video thumbnail");
+                                            e.printStackTrace();
+                                        } finally {
+                                            try {
+                                                retriever.release();
+                                            } catch (RuntimeException ex) {
+                                                // ignore
+                                            }
+                                            try {
+                                                if (pfd_saf != null) {
+                                                    pfd_saf.close();
+                                                }
+                                            } catch (IOException e) {
+                                                e.printStackTrace();
                                             }
                                         }
-                                        catch(IOException e) {
-                                            e.printStackTrace();
-                                        }
+                                    } else {
+                                        if (MyDebug.LOG)
+                                            Log.d(TAG, "load thumbnail for photo from SAF uri");
+                                        thumbnails[i] = loadThumbnailFromUri(media.uri, 4, media.mediastore);
                                     }
+                                } else if (media.video) {
+                                    if (MyDebug.LOG)
+                                        Log.d(TAG, "load thumbnail for video");
+                                    thumbnails[i] = MediaStore.Video.Thumbnails.getThumbnail(getContentResolver(), media.id, MediaStore.Video.Thumbnails.MINI_KIND, null);
+                                } else {
+                                    if (MyDebug.LOG)
+                                        Log.d(TAG, "load thumbnail for photo");
+                                    thumbnails[i] = MediaStore.Images.Thumbnails.getThumbnail(getContentResolver(), media.id, MediaStore.Images.Thumbnails.MINI_KIND, null);
                                 }
-                                else {
-                                    if( MyDebug.LOG )
-                                        Log.d(TAG, "load thumbnail for photo from SAF uri");
-                                    thumbnail = loadThumbnailFromUri(media.uri, 4, media.mediastore);
-                                }
-                            }
-                            else if( media.video ) {
-                                if( MyDebug.LOG )
-                                    Log.d(TAG, "load thumbnail for video");
-                                thumbnail = MediaStore.Video.Thumbnails.getThumbnail(getContentResolver(), media.id, MediaStore.Video.Thumbnails.MINI_KIND, null);
-                            }
-                            else {
-                                if( MyDebug.LOG )
-                                    Log.d(TAG, "load thumbnail for photo");
-                                thumbnail = MediaStore.Images.Thumbnails.getThumbnail(getContentResolver(), media.id, MediaStore.Images.Thumbnails.MINI_KIND, null);
+                            } catch (Throwable exception) {
+                                if (MyDebug.LOG)
+                                    Log.e(TAG, "exif orientation exception");
+                                exception.printStackTrace();
                             }
                         }
-                        catch(Throwable exception) {
-                            // have had Google Play NoClassDefFoundError crashes from getThumbnail() for Galaxy Ace4 (vivalto3g), Galaxy S Duos3 (vivalto3gvn)
-                            // also NegativeArraySizeException - best to catch everything
-                            if( MyDebug.LOG )
-                                Log.e(TAG, "exif orientation exception");
-                            exception.printStackTrace();
-                        }
-                    }
-                    if( thumbnail != null ) {
-                        if( MyDebug.LOG )
-                            Log.d(TAG, "thumbnail orientation is " + media.orientation);
-                        if( media.orientation != 0 ) {
-                            if( MyDebug.LOG )
-                                Log.d(TAG, "thumbnail size is " + thumbnail.getWidth() + " x " + thumbnail.getHeight());
-                            Matrix matrix = new Matrix();
-                            matrix.setRotate(media.orientation, thumbnail.getWidth() * 0.5f, thumbnail.getHeight() * 0.5f);
-                            try {
-                                Bitmap rotated_thumbnail = Bitmap.createBitmap(thumbnail, 0, 0, thumbnail.getWidth(), thumbnail.getHeight(), matrix, true);
-                                // careful, as rotated_thumbnail is sometimes not a copy!
-                                if( rotated_thumbnail != thumbnail ) {
-                                    thumbnail.recycle();
-                                    thumbnail = rotated_thumbnail;
+                        if (thumbnails[i] != null) {
+                            if (MyDebug.LOG)
+                                Log.d(TAG, "thumbnail orientation is " + media.orientation);
+                            if (media.orientation != 0) {
+                                if (MyDebug.LOG)
+                                    Log.d(TAG, "thumbnail size is " + thumbnails[i].getWidth() + " x " + thumbnails[i].getHeight());
+                                Matrix matrix = new Matrix();
+                                matrix.setRotate(media.orientation, thumbnails[i].getWidth() * 0.5f, thumbnails[i].getHeight() * 0.5f);
+                                try {
+                                    Bitmap rotated_thumbnail = Bitmap.createBitmap(thumbnails[i], 0, 0, thumbnails[i].getWidth(), thumbnails[i].getHeight(), matrix, true);
+                                    if (rotated_thumbnail != thumbnails[i]) {
+                                        thumbnails[i].recycle();
+                                        thumbnails[i] = rotated_thumbnail;
+                                    }
+                                } catch (Throwable t) {
+                                    if (MyDebug.LOG)
+                                        Log.d(TAG, "failed to rotate thumbnail");
                                 }
-                            }
-                            catch(Throwable t) {
-                                if( MyDebug.LOG )
-                                    Log.d(TAG, "failed to rotate thumbnail");
                             }
                         }
                     }
                 }
-                //return thumbnail;
 
-                final Bitmap thumbnail_f = thumbnail;
+                final Bitmap thumbnail_f = thumbnails[0];
+                final Bitmap thumbnail2_f = thumbnails[1];
+                final Bitmap thumbnail3_f = thumbnails[2];
+                final Bitmap thumbnail4_f = thumbnails[3];
+                final Bitmap thumbnail5_f = thumbnails[4];
+
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
-                        onPostExecute(thumbnail_f);
+                        onPostExecute(thumbnail_f, thumbnail2_f, thumbnail3_f, thumbnail4_f, thumbnail5_f);
                     }
                 });
             }
 
+
+
             /** Runs on UI thread, after background work is complete.
              */
-            private void onPostExecute(Bitmap thumbnail) {
+            private void onPostExecute(Bitmap thumbnail, Bitmap thumbnail2, Bitmap thumbnail3, Bitmap thumbnail4, Bitmap thumbnail5) {
                 if( MyDebug.LOG )
                     Log.d(TAG, "onPostExecute");
                 if( update_gallery_future != null && update_gallery_future.isCancelled() ) {
@@ -3937,8 +3986,11 @@ public class MainActivity extends AppCompatActivity {
                 if( thumbnail != null ) {
                     if( MyDebug.LOG )
                         Log.d(TAG, "set gallery button to thumbnail");
-                    updateGalleryIcon(thumbnail);
-                    applicationInterface.getDrawPreview().updateThumbnail(thumbnail, is_video, false); // needed in case last ghost image is enabled
+                    updateGalleryIcon(thumbnail, thumbnail2, thumbnail3, thumbnail4);
+                   applicationInterface.getDrawPreview().updateThumbnail(thumbnail, is_video, true); // needed in case last ghost image is enabled
+                   // applicationInterface.getDrawPreview().updateThumbnail(thumbnail2, is_video, false);
+                   // applicationInterface.getDrawPreview().updateThumbnail(thumbnail3, is_video, false);
+                    // applicationInterface.getDrawPreview().updateThumbnail(thumbnail4, is_video, false);
                 }
                 else {
                     if( MyDebug.LOG )
@@ -3965,8 +4017,14 @@ public class MainActivity extends AppCompatActivity {
 
         this.runOnUiThread(new Runnable() {
             public void run() {
-                final ImageButton galleryButton = findViewById(R.id.gallery);
+                final ImageButton galleryButton = findViewById(R.id.gallery1);
+                final ImageButton galleryButton2 = findViewById(R.id.gallery2);
+                final ImageButton galleryButton3 = findViewById(R.id.gallery3);
+                final ImageButton galleryButton4 = findViewById(R.id.gallery4);
+
                 if( started ) {
+
+
                     //galleryButton.setColorFilter(0x80ffffff, PorterDuff.Mode.MULTIPLY);
                     if( gallery_save_anim == null ) {
                         gallery_save_anim = ValueAnimator.ofInt(Color.argb(200, 255, 255, 255), Color.argb(63, 255, 255, 255));
@@ -3978,16 +4036,24 @@ public class MainActivity extends AppCompatActivity {
                     gallery_save_anim.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
                         @Override
                         public void onAnimationUpdate(ValueAnimator animation) {
+
                             galleryButton.setColorFilter((Integer)animation.getAnimatedValue(), PorterDuff.Mode.MULTIPLY);
+                            galleryButton2.setColorFilter((Integer)animation.getAnimatedValue(), PorterDuff.Mode.MULTIPLY);
+                            galleryButton3.setColorFilter((Integer)animation.getAnimatedValue(), PorterDuff.Mode.MULTIPLY);
+                            galleryButton4.setColorFilter((Integer)animation.getAnimatedValue(), PorterDuff.Mode.MULTIPLY);
                         }
                     });
                     gallery_save_anim.start();
+
                 }
                 else
                 if( gallery_save_anim != null ) {
                     gallery_save_anim.cancel();
                 }
                 galleryButton.setColorFilter(null);
+                galleryButton2.setColorFilter(null);
+                galleryButton3.setColorFilter(null);
+                galleryButton4.setColorFilter(null);
             }
         });
     }

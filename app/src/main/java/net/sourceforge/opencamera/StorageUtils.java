@@ -1162,6 +1162,125 @@ public class StorageUtils {
         return media;
     }
 
+    private Media getMediaAtDepthCore(Uri baseUri, String bucket_id, UriType uri_type, int depth) {
+        if (MyDebug.LOG) {
+            Log.d(TAG, "getMediaAtDepth");
+            Log.d(TAG, "baseUri: " + baseUri);
+            Log.d(TAG, "bucket_id: " + bucket_id);
+            Log.d(TAG, "uri_type: " + uri_type);
+            Log.d(TAG, "depth: " + depth);
+        }
+        Media media = null;
+
+        final int column_id_c = 0;
+        final int column_date_taken_c = 1;
+        final int column_name_c = 2;
+        final int column_orientation_c = 3;
+
+        String[] projection;
+        switch (uri_type) {
+            case MEDIASTORE_IMAGES:
+                projection = new String[]{ImageColumns._ID, ImageColumns.DATE_TAKEN, ImageColumns.DISPLAY_NAME, ImageColumns.ORIENTATION};
+                break;
+            case MEDIASTORE_VIDEOS:
+                projection = new String[]{VideoColumns._ID, VideoColumns.DATE_TAKEN, VideoColumns.DISPLAY_NAME};
+                break;
+            default:
+                throw new RuntimeException("unknown uri_type: " + uri_type);
+        }
+
+        String selection = "";
+        switch (uri_type) {
+            case MEDIASTORE_IMAGES:
+                if (bucket_id != null)
+                    selection = ImageColumns.BUCKET_ID + " = " + bucket_id;
+                boolean and = selection.length() > 0;
+                if (and)
+                    selection += " AND ( ";
+                selection += ImageColumns.MIME_TYPE + "='image/jpeg' OR " +
+                        ImageColumns.MIME_TYPE + "='image/webp' OR " +
+                        ImageColumns.MIME_TYPE + "='image/png' OR " +
+                        ImageColumns.MIME_TYPE + "='image/x-adobe-dng'";
+                if (and)
+                    selection += " )";
+                break;
+            case MEDIASTORE_VIDEOS:
+                if (bucket_id != null)
+                    selection = VideoColumns.BUCKET_ID + " = " + bucket_id;
+                break;
+            default:
+                throw new RuntimeException("unknown uri_type: " + uri_type);
+        }
+
+        if (MyDebug.LOG)
+            Log.d(TAG, "selection: " + selection);
+
+        String order;
+        switch (uri_type) {
+            case MEDIASTORE_IMAGES:
+                order = ImageColumns.DATE_TAKEN + " DESC," + ImageColumns._ID + " DESC";
+                break;
+            case MEDIASTORE_VIDEOS:
+                order = VideoColumns.DATE_TAKEN + " DESC," + VideoColumns._ID + " DESC";
+                break;
+            default:
+                throw new RuntimeException("unknown uri_type: " + uri_type);
+        }
+
+        Cursor cursor = null;
+
+        // Apply limit and offset based on depth
+        Uri queryUri = baseUri.buildUpon().appendQueryParameter("limit", String.valueOf(depth + 1)).build(); // Fetch depth + 1 items
+        if (MyDebug.LOG)
+            Log.d(TAG, "queryUri: " + queryUri);
+
+        try {
+            cursor = context.getContentResolver().query(queryUri, projection, selection, null, order);
+            if (cursor != null && cursor.moveToPosition(depth)) {
+                // If the cursor has enough data, move to the desired depth position
+                long id = cursor.getLong(column_id_c);
+                long date = cursor.getLong(column_date_taken_c);
+                int orientation = (uri_type == UriType.MEDIASTORE_IMAGES) ? cursor.getInt(column_orientation_c) : 0;
+                Uri uri = ContentUris.withAppendedId(baseUri, id);
+                String filename = cursor.getString(column_name_c);
+                if (MyDebug.LOG)
+                    Log.d(TAG, "found media at depth " + depth + " for " + uri_type + ": " + uri);
+
+                boolean video;
+                switch (uri_type) {
+                    case MEDIASTORE_IMAGES:
+                        video = false;
+                        break;
+                    case MEDIASTORE_VIDEOS:
+                        video = true;
+                        break;
+                    default:
+                        throw new RuntimeException("unknown uri_type: " + uri_type);
+                }
+                if (MyDebug.LOG)
+                    Log.d(TAG, "video: " + video);
+
+                media = new Media(true, id, video, uri, date, orientation, filename);
+            } else {
+                if (MyDebug.LOG)
+                    Log.d(TAG, "mediastore returned not enough media");
+            }
+        } catch (Exception e) {
+            if (MyDebug.LOG)
+                Log.e(TAG, "Exception trying to find media at depth");
+            e.printStackTrace();
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+
+        if (MyDebug.LOG)
+            Log.d(TAG, "return media at depth: " + media);
+        return media;
+    }
+
+
     /** Used when using Storage Access Framework AND scoped storage.
      *  This is because with scoped storage, we don't request READ_EXTERNAL_STORAGE (as
      *  recommended). It's meant to be the case that applications should still be able to see files
@@ -1398,6 +1517,55 @@ public class StorageUtils {
         return media;
     }
 
+    private Media getMediaAtDepth(UriType uri_type, int depth) {
+        if( MyDebug.LOG )
+            Log.d(TAG, "getLatestMedia: " + uri_type);
+        if( !MainActivity.useScopedStorage() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ) {
+            // needed for Android 6, in case users deny storage permission, otherwise we get java.lang.SecurityException from ContentResolver.query()
+            // see https://developer.android.com/training/permissions/requesting.html
+            // we now request storage permission before opening the camera, but keep this here just in case
+            // we restrict check to Android 6 or later just in case, see note in LocationSupplier.setupLocationListener()
+            // update for scoped storage: here we should no longer need READ_EXTERNAL_STORAGE (which we won't have), instead we'll only be able to see
+            // media created by Open Camera, which is fine
+            if( MyDebug.LOG )
+                Log.e(TAG, "don't have READ_EXTERNAL_STORAGE permission");
+            return null;
+        }
+
+        String save_folder = getImageFolderPath(); // may be null if using SAF
+        if( MyDebug.LOG )
+            Log.d(TAG, "save_folder: " + save_folder);
+        String bucket_id = null;
+        if( save_folder != null ) {
+            bucket_id = String.valueOf(save_folder.toLowerCase().hashCode());
+        }
+        if( MyDebug.LOG )
+            Log.d(TAG, "bucket_id: " + bucket_id);
+
+        Uri baseUri;
+        switch( uri_type ) {
+            case MEDIASTORE_IMAGES:
+                baseUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                break;
+            case MEDIASTORE_VIDEOS:
+                baseUri = Video.Media.EXTERNAL_CONTENT_URI;
+                break;
+            default:
+                throw new RuntimeException("unknown uri_type: " + uri_type);
+        }
+
+        if( MyDebug.LOG )
+            Log.d(TAG, "baseUri: " + baseUri);
+        Media media = getMediaAtDepthCore(baseUri, bucket_id, uri_type, depth);
+        if( media == null && bucket_id != null ) {
+            if( MyDebug.LOG )
+                Log.d(TAG, "fall back to checking any folder");
+            media = getLatestMediaCore(baseUri, null, uri_type);
+        }
+
+        return media;
+    }
+
     Media getLatestMedia() {
         if( MainActivity.useScopedStorage() && this.isUsingSAF() ) {
             Uri treeUri = this.getTreeUriSAF();
@@ -1438,6 +1606,49 @@ public class StorageUtils {
             Log.d(TAG, "return latest media: " + media);
         return media;
     }
+
+    Media getMediaAtDepth(int depth) {
+        if( MainActivity.useScopedStorage() && this.isUsingSAF() ) {
+            Uri treeUri = this.getTreeUriSAF();
+            return getLatestMediaSAF(treeUri);
+        }
+
+        Media image_media = getMediaAtDepth(UriType.MEDIASTORE_IMAGES, depth);
+        Media video_media = getMediaAtDepth(UriType.MEDIASTORE_VIDEOS, depth);
+        Media media = null;
+        if( image_media != null && video_media == null ) {
+            if( MyDebug.LOG )
+                Log.d(TAG, "only found images");
+            media = image_media;
+        }
+        else if( image_media == null && video_media != null ) {
+            if( MyDebug.LOG )
+                Log.d(TAG, "only found videos");
+            media = video_media;
+        }
+        else if( image_media != null && video_media != null ) {
+            if( MyDebug.LOG ) {
+                Log.d(TAG, "found images and videos");
+                Log.d(TAG, "latest image date: " + image_media.date);
+                Log.d(TAG, "latest video date: " + video_media.date);
+            }
+            if( image_media.date >= video_media.date ) {
+                if( MyDebug.LOG )
+                    Log.d(TAG, "latest image is newer");
+                media = image_media;
+            }
+            else {
+                if( MyDebug.LOG )
+                    Log.d(TAG, "latest video is newer");
+                media = video_media;
+            }
+        }
+        if( MyDebug.LOG )
+            Log.d(TAG, "return latest media: " + media);
+        return media;
+    }
+
+
 
     // only valid if isUsingSAF()
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)

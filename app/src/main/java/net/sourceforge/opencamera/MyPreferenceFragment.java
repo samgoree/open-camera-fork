@@ -1651,6 +1651,11 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
                     View aestheticsIndicator = aai.getAestheticsIndicatorView();
                     View aestheticsGraph = aai.getAestheticsGraphView();
                     View takePhotoButton = main_activity.findViewById(R.id.take_photo);
+                    View galleryButton2 = main_activity.findViewById(R.id.gallery2);
+                    View galleryButton3 = main_activity.findViewById(R.id.gallery3);
+                    View galleryButton4 = main_activity.findViewById(R.id.gallery4);
+
+
                     if(newValue.equals(true)) {
                         // hide the shutter button
                         takePhotoButton.setVisibility(View.GONE); //totally invisible
@@ -1660,6 +1665,10 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
                         if(sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false)){
                             aestheticsIndicator.setVisibility(View.VISIBLE);
                             aestheticsGraph.setVisibility(View.VISIBLE);
+                            galleryButton2.setVisibility(View.VISIBLE);
+                            galleryButton3.setVisibility(View.VISIBLE);
+                            galleryButton4.setVisibility(View.VISIBLE);
+
                         }
 
 
@@ -1709,15 +1718,24 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
                     AestheticsApplicationInterface aai = (AestheticsApplicationInterface)main_activity.getApplicationInterface();
                     View aestheticsIndicator = aai.getAestheticsIndicatorView();
                     View aestheticsGraph = aai.getAestheticsGraphView();
+                    View galleryButton2 = main_activity.findViewById(R.id.gallery2);
+                    View galleryButton3 = main_activity.findViewById(R.id.gallery3);
+                    View galleryButton4 = main_activity.findViewById(R.id.gallery4);
                     if(newValue.equals(true)){
                         aestheticsGraph.setVisibility(View.VISIBLE);
                         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(main_activity);
                         if(sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false)){
                             aestheticsIndicator.setVisibility(View.VISIBLE);
+                            galleryButton2.setVisibility(View.VISIBLE);
+                            galleryButton3.setVisibility(View.VISIBLE);
+                            galleryButton4.setVisibility(View.VISIBLE);
                         }
                         aai.start_take_photo_and_classify();
                     }else{
                         aestheticsGraph.setVisibility(View.INVISIBLE);
+                        galleryButton2.setVisibility(View.INVISIBLE);
+                        galleryButton3.setVisibility(View.INVISIBLE);
+                        galleryButton4.setVisibility(View.INVISIBLE);
                         aestheticsIndicator.setVisibility(View.GONE);
                         if(!sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false)){
                             aai.stop_take_photo_and_classify();

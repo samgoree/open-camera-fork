@@ -417,7 +417,7 @@ public class MainUI {
             List<View> buttons_permanent = new ArrayList<>();
             if( ui_placement == UIPlacement.UIPLACEMENT_TOP ) {
                 // not part of the icon panel in TOP mode
-                view = main_activity.findViewById(R.id.gallery);
+                view = main_activity.findViewById(R.id.gallery1);
                 layoutParams = (RelativeLayout.LayoutParams) view.getLayoutParams();
                 layoutParams.addRule(align_parent_left, 0);
                 layoutParams.addRule(align_parent_right, RelativeLayout.TRUE);
@@ -429,10 +429,10 @@ public class MainUI {
                 layoutParams.addRule(right_of, 0);
                 setMarginsForSystemUI(layoutParams, 0, gallery_top_gap, gallery_navigation_gap, 0);
                 view.setLayoutParams(layoutParams);
-                setViewRotation(view, ui_rotation);
+                //setViewRotation(view, ui_rotation);
             }
             else {
-                buttons_permanent.add(main_activity.findViewById(R.id.gallery));
+                buttons_permanent.add(main_activity.findViewById(R.id.gallery1));
             }
             buttons_permanent.add(main_activity.findViewById(R.id.settings));
             buttons_permanent.add(main_activity.findViewById(R.id.popup));
@@ -550,7 +550,7 @@ public class MainUI {
                 // need to reset size/margins to their default
                 // except for gallery, which still needs its margins set for navigation gap! (and we
                 // shouldn't change it's size, which isn't necessarily button_size)
-                view = main_activity.findViewById(R.id.gallery);
+                view = main_activity.findViewById(R.id.gallery1);
                 layoutParams = (RelativeLayout.LayoutParams) view.getLayoutParams();
                 layoutParams2 = (RelativeLayout.LayoutParams) view.getLayoutParams();
 
@@ -1102,40 +1102,51 @@ public class MainUI {
             Log.d(TAG, "setTakePhotoIcon()");
         if( main_activity.getPreview() != null ) {
             ImageButton view = main_activity.findViewById(R.id.take_photo);
-            int resource;
-            int content_description;
-            int switch_video_content_description;
-            if( main_activity.getPreview().isVideo() ) {
-                if( MyDebug.LOG )
-                    Log.d(TAG, "set icon to video");
-                resource = main_activity.getPreview().isVideoRecording() ? R.drawable.take_video_recording : R.drawable.take_video_selector;
-                content_description = main_activity.getPreview().isVideoRecording() ? R.string.stop_video : R.string.start_video;
-                switch_video_content_description = R.string.switch_to_photo;
-            }
-            else if( main_activity.getApplicationInterface().getPhotoMode() == MyApplicationInterface.PhotoMode.Panorama &&
-                    main_activity.getApplicationInterface().getGyroSensor().isRecording() ) {
-                if( MyDebug.LOG )
-                    Log.d(TAG, "set icon to recording panorama");
-                resource = R.drawable.baseline_check_white_48;
-                content_description = R.string.finish_panorama;
-                switch_video_content_description = R.string.switch_to_video;
-            }
-            else {
-                if( MyDebug.LOG )
-                    Log.d(TAG, "set icon to photo");
-                resource = R.drawable.take_photo_selector;
-                content_description = R.string.take_photo;
-                switch_video_content_description = R.string.switch_to_video;
-            }
-            view.setImageResource(resource);
-            view.setContentDescription( main_activity.getResources().getString(content_description) );
-            view.setTag(resource); // for testing
+            AestheticsApplicationInterface aai = (AestheticsApplicationInterface) main_activity.getApplicationInterface();
 
-            view = main_activity.findViewById(R.id.switch_video);
-            view.setContentDescription( main_activity.getResources().getString(switch_video_content_description) );
-            resource = main_activity.getPreview().isVideo() ? R.drawable.take_photo : R.drawable.take_video;
-            view.setImageResource(resource);
-            view.setTag(resource); // for testing
+            // Check if the camera is in aesthetics indicator mode
+            if (aai.isAestheticsMode()){
+                // If it is, hide the take photo button
+                view.setVisibility(View.GONE);
+            } else {
+                // If it's not, show the take photo button and set the appropriate icon
+                view.setVisibility(View.VISIBLE);
+
+                int resource;
+                int content_description;
+                int switch_video_content_description;
+                if( main_activity.getPreview().isVideo() ) {
+                    if( MyDebug.LOG )
+                        Log.d(TAG, "set icon to video");
+                    resource = main_activity.getPreview().isVideoRecording() ? R.drawable.shortcut_gallery : R.drawable.take_video_selector;
+                    content_description = main_activity.getPreview().isVideoRecording() ? R.string.stop_video : R.string.start_video;
+                    switch_video_content_description = R.string.switch_to_photo;
+                }
+                else if( main_activity.getApplicationInterface().getPhotoMode() == MyApplicationInterface.PhotoMode.Panorama &&
+                        main_activity.getApplicationInterface().getGyroSensor().isRecording() ) {
+                    if( MyDebug.LOG )
+                        Log.d(TAG, "set icon to recording panorama");
+                    resource = R.drawable.baseline_check_white_48;
+                    content_description = R.string.finish_panorama;
+                    switch_video_content_description = R.string.switch_to_video;
+                }
+                else {
+                    if( MyDebug.LOG )
+                        Log.d(TAG, "set icon to photo");
+                    resource = R.drawable.take_photo_selector;
+                    content_description = R.string.take_photo;
+                    switch_video_content_description = R.string.switch_to_video;
+                }
+                view.setImageResource(resource);
+                view.setContentDescription( main_activity.getResources().getString(content_description) );
+                view.setTag(resource); // for testing
+
+                view = main_activity.findViewById(R.id.switch_video);
+                view.setContentDescription( main_activity.getResources().getString(switch_video_content_description) );
+                resource = main_activity.getPreview().isVideo() ? R.drawable.take_photo : R.drawable.take_video;
+                view.setImageResource(resource);
+                view.setTag(resource); // for testing
+            }
         }
     }
 
@@ -1358,7 +1369,7 @@ public class MainUI {
                 View faceDetectionButton = main_activity.findViewById(R.id.face_detection);
                 View audioControlButton = main_activity.findViewById(R.id.audio_control);
                 View popupButton = main_activity.findViewById(R.id.popup);
-                View galleryButton = main_activity.findViewById(R.id.gallery);
+                View galleryButton = main_activity.findViewById(R.id.gallery1);
                 View settingsButton = main_activity.findViewById(R.id.settings);
                 View zoomControls = main_activity.findViewById(R.id.zoom);
                 View zoomSeekBar = main_activity.findViewById(R.id.zoom_seekbar);

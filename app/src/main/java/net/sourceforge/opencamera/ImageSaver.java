@@ -1531,6 +1531,9 @@ public class ImageSaver extends Thread {
             if( MyDebug.LOG )
                 Log.d(TAG, "save NR image");
             String suffix = "_NR";
+            // Rotate the bitmap before saving
+            nr_bitmap = rotateBitmap(nr_bitmap, 90); // Rotate by 90 degrees
+
             success = saveSingleImageNow(request, request.jpeg_images.get(0), nr_bitmap, suffix, !request.save_secondary, true, true, false, request.save_secondary);
             if( MyDebug.LOG && !success )
                 Log.e(TAG, "saveSingleImageNow failed for nr image");
@@ -1823,19 +1826,27 @@ public class ImageSaver extends Thread {
      */
     private boolean saveImages(Request request, String suffix, boolean first_only, boolean update_thumbnail, boolean share) {
         boolean success = true;
-        int mid_image = request.jpeg_images.size()/2;
-        for(int i=0;i<request.jpeg_images.size();i++) {
+        int mid_image = request.jpeg_images.size() / 2;
+        for (int i = 0; i < request.jpeg_images.size(); i++) {
             // note, even if one image fails, we still try saving the other images - might as well give the user as many images as we can...
-            byte [] image = request.jpeg_images.get(i);
+            byte[] image = request.jpeg_images.get(i);
             boolean multiple_jpegs = request.jpeg_images.size() > 1 && !first_only;
             String filename_suffix = (multiple_jpegs || request.force_suffix) ? suffix + (i + request.suffix_offset) : "";
             boolean share_image = share && (i == mid_image);
-            if( !saveSingleImageNow(request, image, null, filename_suffix, update_thumbnail, share_image, false, false, request.save_secondary) ) {
-                if( MyDebug.LOG )
+
+            // Load the JPEG image as a Bitmap
+            Bitmap bitmap = loadBitmap(image, true, 1); // Assuming inSampleSize is 1
+
+            // Rotate the Bitmap
+            bitmap = rotateBitmap(bitmap, 90); // Rotate by 90 degrees
+
+            // Save the rotated Bitmap
+            if (!saveSingleImageNow(request, image, bitmap, filename_suffix, update_thumbnail, share_image, false, false, request.save_secondary)) {
+                if (MyDebug.LOG)
                     Log.e(TAG, "saveSingleImageNow failed for image: " + i);
                 success = false;
             }
-            if( first_only )
+            if (first_only)
                 break; // only requested the first
         }
         return success;
@@ -2448,7 +2459,7 @@ public class ImageSaver extends Thread {
         if( MyDebug.LOG )
             Log.d(TAG, "extension: " + extension);
 
-        if(!save_secondary) main_activity.savingImage(true);
+        if(!save_secondary) main_activity.savingImage(true); main_activity.updateGalleryIcon(); // update gallery icon, as we may have saved a new image
 
         // If using SAF or image_capture_intent is true, or using scoped storage, only saveUri is non-null
         // Otherwise, only picFile is non-null
@@ -2821,9 +2832,13 @@ public class ImageSaver extends Thread {
             }
             else {
                 final Bitmap thumbnail_f = thumbnail;
+                final Bitmap thumbnail_f2 = thumbnail;
+                final Bitmap thumbnail_f3 = thumbnail;
+                final Bitmap thumbnail_f4 = thumbnail;
+                final Bitmap thumbnail_f5 = thumbnail;
                 main_activity.runOnUiThread(new Runnable() {
                     public void run() {
-                        applicationInterface.updateThumbnail(thumbnail_f, false);
+                        applicationInterface.updateThumbnail(thumbnail_f, thumbnail_f2, thumbnail_f3, thumbnail_f4, false);
                     }
                 });
                 if( MyDebug.LOG ) {
@@ -3771,6 +3786,13 @@ public class ImageSaver extends Thread {
             return store_location;
         }
         return false;
+    }
+
+    // Method to rotate a bitmap around its center axis
+    private Bitmap rotateBitmap(Bitmap bitmap, float angle) {
+        Matrix matrix = new Matrix();
+        matrix.setRotate(angle, bitmap.getWidth() / 2.0f, bitmap.getHeight() / 2.0f);
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
     }
 
     // for testing:
