@@ -3291,7 +3291,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
 
     private void waitForTakePhoto() {
         View switchCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_camera);
-        View switchMultiCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_multi_camera);
         View switchVideoButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_video);
         //View flashButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.flash);
         //View focusButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.focus_mode);
@@ -3314,7 +3313,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
                 assertTrue(System.currentTimeMillis() - time_s < (is_panorama ? 50000 : 20000)); // need longer for panorama on Nexus 7 for testTakePhotoPanoramaMax
             }
             assertTrue(!mPreview.isTakingPhoto() || switchCameraButton.getVisibility() == View.GONE);
-            assertTrue(!mPreview.isTakingPhoto() || switchMultiCameraButton.getVisibility() == View.GONE);
             assertTrue(!mPreview.isTakingPhoto() || switchVideoButton.getVisibility() == View.GONE);
             //assertTrue(!mPreview.isTakingPhoto() || flashButton.getVisibility() == View.GONE);
             //assertTrue(!mPreview.isTakingPhoto() || focusButton.getVisibility() == View.GONE);
@@ -3754,7 +3752,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         boolean has_audio_control_button = !sharedPreferences.getString(PreferenceKeys.AudioControlPreferenceKey, "none").equals("none");
 
         View switchCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_camera);
-        View switchMultiCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_multi_camera);
         View switchVideoButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_video);
         View exposureButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.exposure);
         View exposureLockButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.exposure_lock);
@@ -3768,7 +3765,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         if( pause_preview ) {
             assertFalse(mPreview.isPreviewStarted());
             assertEquals(switchCameraButton.getVisibility(), View.GONE);
-            assertEquals(switchMultiCameraButton.getVisibility(), View.GONE);
             assertEquals(switchVideoButton.getVisibility(), View.GONE);
             assertEquals(exposureButton.getVisibility(), View.GONE);
             assertEquals(exposureLockButton.getVisibility(), View.GONE);
@@ -3780,7 +3776,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         else {
             assertTrue(mPreview.isPreviewStarted()); // check preview restarted
             assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-            assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
             assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
             if( !immersive_mode ) {
                 assertEquals(exposureButton.getVisibility(), exposureVisibility);
@@ -3824,7 +3819,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         Log.d(TAG, "n_files at start: " + n_files);
 
         View switchCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_camera);
-        View switchMultiCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_multi_camera);
         View switchVideoButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_video);
         //View flashButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.flash);
         //View focusButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.focus_mode);
@@ -3835,7 +3829,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         View trashButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.trash);
         View shareButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.share);
         assertEquals(switchCameraButton.getVisibility(), (immersive_mode ? View.GONE : (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE)));
-        assertEquals(switchMultiCameraButton.getVisibility(), (immersive_mode ? View.GONE : (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE)));
         assertEquals(switchVideoButton.getVisibility(), (immersive_mode ? View.GONE : View.VISIBLE));
         int exposureVisibility = exposureButton.getVisibility();
         int exposureLockVisibility = exposureLockButton.getVisibility();
@@ -4514,7 +4507,7 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
 
     /** Tests cycling through cameras with the multi-camera icon.
      */
-    private void subTestCycleMultiCameras(Set<Integer> camera_ids) throws InterruptedException {
+    /*private void subTestCycleMultiCameras(Set<Integer> camera_ids) throws InterruptedException {
         if( mActivity.showSwitchMultiCamIcon() ) {
             int cameraId = mPreview.getCameraId();
             CameraController.Facing facing = mPreview.getCameraControllerManager().getFacing(cameraId);
@@ -4539,7 +4532,7 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
             }
             while( mActivity.getNextMultiCameraId() != cameraId );
         }
-    }
+    }*/
 
     /** Tests taking a photo with multiple cameras.
      *  Also tests the content descriptions for switch camera button.
@@ -4575,11 +4568,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
             CameraController.Facing facing = mPreview.getCameraControllerManager().getFacing(cameraId);
             if( i == 0 ) {
                 assertEquals(CameraController.Facing.FACING_BACK, facing);
-            }
-
-            if( test_multi_cam ) {
-                // first test cycling through the cameras with this facing
-                subTestCycleMultiCameras(camera_ids);
             }
 
             View switchCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_camera);
@@ -4694,10 +4682,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
                 editor.apply();
                 updateForSettings();
             }
-        }
-
-        if( test_multi_cam ) {
-            subTestCycleMultiCameras(camera_ids);
         }
 
         if( cycle_all_cameras || test_multi_cam ) {
@@ -4936,7 +4920,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         boolean has_zoom = mPreview.supportsZoom();
 
         View switchCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_camera);
-        View switchMultiCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_multi_camera);
         View switchVideoButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_video);
         View exposureButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.exposure);
         View exposureLockButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.exposure_lock);
@@ -4952,7 +4935,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         SeekBar targetSeekBar = mActivity.findViewById(net.sourceforge.opencamera.R.id.focus_bracketing_target_seekbar);
 
         assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-        assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
         assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
         int exposureVisibility = exposureButton.getVisibility();
         int exposureLockVisibility = exposureLockButton.getVisibility();
@@ -4970,7 +4952,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         // now wait for immersive mode to kick in
         Thread.sleep(6000);
         assertEquals(switchCameraButton.getVisibility(), View.GONE);
-        assertEquals(switchMultiCameraButton.getVisibility(), View.GONE);
         assertEquals(switchVideoButton.getVisibility(), View.GONE);
         assertEquals(exposureButton.getVisibility(), View.GONE);
         assertEquals(exposureLockButton.getVisibility(), View.GONE);
@@ -4989,7 +4970,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
 
         // test now exited immersive mode
         assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-        assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
         assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
         assertEquals(exposureButton.getVisibility(), exposureVisibility);
         assertEquals(exposureLockButton.getVisibility(), exposureLockVisibility);
@@ -5007,7 +4987,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         // wait for immersive mode to kick in again
         Thread.sleep(6000);
         assertEquals(switchCameraButton.getVisibility(), View.GONE);
-        assertEquals(switchMultiCameraButton.getVisibility(), View.GONE);
         assertEquals(switchVideoButton.getVisibility(), View.GONE);
         assertEquals(exposureButton.getVisibility(), View.GONE);
         assertEquals(exposureLockButton.getVisibility(), View.GONE);
@@ -5026,7 +5005,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
 
         // test now exited immersive mode
         assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-        assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
         assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
         assertEquals(exposureButton.getVisibility(), exposureVisibility);
         assertEquals(exposureLockButton.getVisibility(), exposureLockVisibility);
@@ -5048,7 +5026,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         }
         // test now exited immersive mode
         assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-        assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
         assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
         assertEquals(exposureButton.getVisibility(), exposureVisibility);
         assertEquals(exposureLockButton.getVisibility(), exposureLockVisibility);
@@ -5066,7 +5043,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         // wait for immersive mode to kick in again
         Thread.sleep(6000);
         assertEquals(switchCameraButton.getVisibility(), View.GONE);
-        assertEquals(switchMultiCameraButton.getVisibility(), View.GONE);
         assertEquals(switchVideoButton.getVisibility(), View.GONE);
         assertEquals(exposureButton.getVisibility(), View.GONE);
         assertEquals(exposureLockButton.getVisibility(), View.GONE);
@@ -5086,7 +5062,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         // test touch exits immersive mode
         TouchUtils.clickView(MainActivityTest.this, mPreview.getView());
         assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-        assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
         assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
         assertEquals(exposureButton.getVisibility(), exposureVisibility);
         assertEquals(exposureLockButton.getVisibility(), exposureLockVisibility);
@@ -5116,7 +5091,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
             // wait for immersive mode to kick in again
             Thread.sleep(6000);
             assertEquals(switchCameraButton.getVisibility(), View.GONE);
-            assertEquals(switchMultiCameraButton.getVisibility(), View.GONE);
             assertEquals(switchVideoButton.getVisibility(), View.GONE);
             assertEquals(exposureButton.getVisibility(), View.GONE);
             assertEquals(exposureLockButton.getVisibility(), View.GONE);
@@ -5134,7 +5108,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
             // test touch exits immersive mode
             TouchUtils.clickView(MainActivityTest.this, mPreview.getView());
             assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-            assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
             assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
             assertEquals(exposureButton.getVisibility(), exposureVisibility);
             assertEquals(exposureLockButton.getVisibility(), exposureLockVisibility);
@@ -5169,7 +5142,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
             // wait for immersive mode to kick in again
             Thread.sleep(6000);
             assertEquals(switchCameraButton.getVisibility(), View.GONE);
-            assertEquals(switchMultiCameraButton.getVisibility(), View.GONE);
             assertEquals(switchVideoButton.getVisibility(), View.GONE);
             assertEquals(exposureButton.getVisibility(), View.GONE);
             assertEquals(exposureLockButton.getVisibility(), View.GONE);
@@ -5187,7 +5159,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
             // test touch exits immersive mode
             TouchUtils.clickView(MainActivityTest.this, mPreview.getView());
             assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-            assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
             assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
             assertEquals(exposureButton.getVisibility(), exposureVisibility);
             assertEquals(exposureLockButton.getVisibility(), exposureLockVisibility);
@@ -5216,7 +5187,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
             // wait for immersive mode to kick in again
             Thread.sleep(6000);
             assertEquals(switchCameraButton.getVisibility(), View.GONE);
-            assertEquals(switchMultiCameraButton.getVisibility(), View.GONE);
             assertEquals(switchVideoButton.getVisibility(), View.GONE);
             assertEquals(exposureButton.getVisibility(), View.GONE);
             assertEquals(exposureLockButton.getVisibility(), View.GONE);
@@ -5252,7 +5222,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         boolean has_zoom = mPreview.supportsZoom();
 
         View switchCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_camera);
-        View switchMultiCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_multi_camera);
         View switchVideoButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_video);
         View exposureButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.exposure);
         View exposureLockButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.exposure_lock);
@@ -5264,7 +5233,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         View takePhotoVideoButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.take_photo_when_video_recording);
         View zoomSeekBar = mActivity.findViewById(net.sourceforge.opencamera.R.id.zoom_seekbar);
         assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-        assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
         assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
         int exposureVisibility = exposureButton.getVisibility();
         int exposureLockVisibility = exposureLockButton.getVisibility();
@@ -5279,7 +5247,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         // now wait for immersive mode to kick in
         Thread.sleep(6000);
         assertEquals(switchCameraButton.getVisibility(), View.GONE);
-        assertEquals(switchMultiCameraButton.getVisibility(), View.GONE);
         assertEquals(switchVideoButton.getVisibility(), View.GONE);
         assertEquals(exposureButton.getVisibility(), View.GONE);
         assertEquals(exposureLockButton.getVisibility(), View.GONE);
@@ -5297,7 +5264,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
 
         // test now exited immersive mode
         assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-        assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
         assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
         assertEquals(exposureButton.getVisibility(), exposureVisibility);
         assertEquals(exposureLockButton.getVisibility(), exposureLockVisibility);
@@ -5448,7 +5414,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         assertTrue(mPreview.isPreviewStarted());
 
         View switchCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_camera);
-        View switchMultiCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_multi_camera);
         View switchVideoButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_video);
         //View flashButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.flash);
         //View focusButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.focus_mode);
@@ -5459,7 +5424,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         View trashButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.trash);
         View shareButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.share);
         assertEquals(switchCameraButton.getVisibility(), (immersive_mode ? View.GONE : (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE)));
-        assertEquals(switchMultiCameraButton.getVisibility(), (immersive_mode ? View.GONE : (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE)));
         assertEquals(switchVideoButton.getVisibility(), (immersive_mode ? View.GONE : View.VISIBLE));
         // store status to compare with later
         int exposureVisibility = exposureButton.getVisibility();
@@ -5493,7 +5457,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         // now preview should be paused
         assertFalse(mPreview.isPreviewStarted()); // check preview paused
         assertEquals(switchCameraButton.getVisibility(), View.GONE);
-        assertEquals(switchMultiCameraButton.getVisibility(), View.GONE);
         assertEquals(switchVideoButton.getVisibility(), View.GONE);
         assertEquals(exposureButton.getVisibility(), View.GONE);
         assertEquals(exposureLockButton.getVisibility(), View.GONE);
@@ -5517,7 +5480,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
 
         assertTrue(mPreview.isPreviewStarted()); // check preview restarted
         assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-        assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
         assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
         //assertTrue(flashButton.getVisibility() == flashVisibility);
         //assertTrue(focusButton.getVisibility() == focusVisibility);
@@ -5601,7 +5563,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         assertTrue(mPreview.isPreviewStarted());
 
         View switchCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_camera);
-        View switchMultiCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_multi_camera);
         View switchVideoButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_video);
         //View flashButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.flash);
         //View focusButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.focus_mode);
@@ -5612,7 +5573,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         View trashButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.trash);
         View shareButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.share);
         assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-        assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
         assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
         // flash and focus etc default visibility tested in another test
         // but store status to compare with later
@@ -5650,7 +5610,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         // now preview should be paused
         assertFalse(mPreview.isPreviewStarted()); // check preview restarted
         assertEquals(switchCameraButton.getVisibility(), View.GONE);
-        assertEquals(switchMultiCameraButton.getVisibility(), View.GONE);
         assertEquals(switchVideoButton.getVisibility(), View.GONE);
         //assertTrue(flashButton.getVisibility() == View.GONE);
         //assertTrue(focusButton.getVisibility() == View.GONE);
@@ -5683,7 +5642,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
 
             assertTrue(mPreview.isPreviewStarted()); // check preview restarted
             assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-            assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
             assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
             //assertTrue(flashButton.getVisibility() == flashVisibility);
             //assertTrue(focusButton.getVisibility() == focusVisibility);
@@ -5957,7 +5915,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         Log.d(TAG, "n_files at start: " + n_files);
 
         View switchCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_camera);
-        View switchMultiCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_multi_camera);
         View switchVideoButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_video);
         //View flashButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.flash);
         //View focusButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.focus_mode);
@@ -5968,7 +5925,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         View trashButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.trash);
         View shareButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.share);
         assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-        assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
         assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
         // flash and focus etc default visibility tested in another test
         // but store status to compare with later
@@ -6017,7 +5973,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
 
         assertTrue(mPreview.isPreviewStarted()); // check preview restarted
         assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-        assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
         assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
         //assertTrue(flashButton.getVisibility() == flashVisibility);
         //assertTrue(focusButton.getVisibility() == focusVisibility);
@@ -6263,7 +6218,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         boolean has_audio_control_button = !sharedPreferences.getString(PreferenceKeys.AudioControlPreferenceKey, "none").equals("none");
 
         View switchCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_camera);
-        View switchMultiCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_multi_camera);
         //View flashButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.flash);
         //View focusButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.focus_mode);
         View exposureButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.exposure);
@@ -6273,7 +6227,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         View trashButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.trash);
         View shareButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.share);
         assertEquals(switchCameraButton.getVisibility(), (immersive_mode ? View.GONE : (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE)));
-        assertEquals(switchMultiCameraButton.getVisibility(), (immersive_mode ? View.GONE : (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE)));
         assertEquals(switchVideoButton.getVisibility(), (immersive_mode ? View.GONE : View.VISIBLE));
         // but store status to compare with later
         int exposureVisibility = exposureButton.getVisibility();
@@ -6321,7 +6274,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
             else
                 assertEquals(takePhotoVideoButton.getVisibility(), View.GONE);
             assertEquals(switchCameraButton.getVisibility(), View.GONE);
-            assertEquals(switchMultiCameraButton.getVisibility(), View.GONE);
             //assertTrue(switchVideoButton.getVisibility() == (immersive_mode ? View.GONE : View.VISIBLE));
             assertEquals(switchVideoButton.getVisibility(), View.GONE);
             assertEquals(audioControlButton.getVisibility(), View.GONE);
@@ -6442,7 +6394,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
             // if doing restart on max filesize, we may have already restarted by now (on Camera2 API at least)
             Log.d(TAG, "switchCameraButton.getVisibility(): " + switchCameraButton.getVisibility());
             assertEquals(switchCameraButton.getVisibility(), (immersive_mode ? View.GONE : (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE)));
-            assertEquals(switchMultiCameraButton.getVisibility(), (immersive_mode ? View.GONE : (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE)));
             assertEquals(audioControlButton.getVisibility(), ((has_audio_control_button && !immersive_mode) ? View.VISIBLE : View.GONE));
         }
         assertEquals(switchVideoButton.getVisibility(), (immersive_mode ? View.GONE : View.VISIBLE));
@@ -8033,7 +7984,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         boolean has_audio_control_button = !sharedPreferences.getString(PreferenceKeys.AudioControlPreferenceKey, "none").equals("none");
 
         View switchCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_camera);
-        View switchMultiCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_multi_camera);
         //View flashButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.flash);
         //View focusButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.focus_mode);
         View exposureButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.exposure);
@@ -8043,7 +7993,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         View trashButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.trash);
         View shareButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.share);
         assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-        assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
         assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
         // flash and focus etc default visibility tested in another test
         // but store status to compare with later
@@ -8070,7 +8019,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         assertTrue( mPreview.isVideoRecording() );
 
         assertEquals(switchCameraButton.getVisibility(), View.GONE);
-        assertEquals(switchMultiCameraButton.getVisibility(), View.GONE);
         assertEquals(switchVideoButton.getVisibility(), View.GONE);
         //assertTrue(flashButton.getVisibility() == flashVisibility);
         //assertTrue(focusButton.getVisibility() == View.GONE);
@@ -8125,7 +8073,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
 
         assertTrue(mPreview.isPreviewStarted()); // check preview restarted
         assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-        assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
         assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
         //assertTrue(flashButton.getVisibility() == flashVisibility);
         //assertTrue(focusButton.getVisibility() == focusVisibility);
@@ -8740,7 +8687,7 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
             Log.d(TAG, "display_size: " + display_size.x + " x " + display_size.y);
         }
         View settingsButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.settings);
-        View galleryButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.gallery);
+        View galleryButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.gallery1);
 
         Log.d(TAG, "settings right: " + settingsButton.getRight());
         Log.d(TAG, "settings top: " + settingsButton.getTop());
@@ -9248,7 +9195,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         assertFalse(mPreview.isOnTimer());
 
         View switchCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_camera);
-        View switchMultiCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_multi_camera);
         View switchVideoButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_video);
         View exposureButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.exposure);
         View exposureLockButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.exposure_lock);
@@ -9315,7 +9261,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
                 editor.apply();
             }
             assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-            assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
             assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
             assertEquals(exposureButton.getVisibility(), (mPreview.supportsExposures() ? View.VISIBLE : View.GONE));
             assertEquals(exposureLockButton.getVisibility(), (mPreview.supportsExposureLock() ? View.VISIBLE : View.GONE));
@@ -9341,7 +9286,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
             assertEquals(7, n_new_files);
             // check GUI has returned to correct state
             assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-            assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
             assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
             assertEquals(exposureButton.getVisibility(), (mPreview.supportsExposures() ? View.VISIBLE : View.GONE));
             assertEquals(exposureLockButton.getVisibility(), (mPreview.supportsExposureLock() ? View.VISIBLE : View.GONE));
@@ -10539,7 +10483,7 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         Log.d(TAG, "testGallery");
         setToDefault();
 
-        View galleryButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.gallery);
+        View galleryButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.gallery1);
         clickView(galleryButton);
 
     }
@@ -12302,7 +12246,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
 
         View takePhotoButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.take_photo);
         View switchCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_camera);
-        View switchMultiCameraButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_multi_camera);
         View switchVideoButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.switch_video);
         View exposureButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.exposure);
         View exposureLockButton = mActivity.findViewById(net.sourceforge.opencamera.R.id.exposure_lock);
@@ -12315,7 +12258,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
 
         assertEquals(takePhotoButton.getVisibility(), View.VISIBLE);
         assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-        assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
         assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
         assertEquals(exposureButton.getVisibility(), View.VISIBLE);
         assertEquals(exposureLockButton.getVisibility(), (mPreview.supportsExposureLock() ? View.VISIBLE : View.GONE));
@@ -12343,7 +12285,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
 
             assertEquals(takePhotoButton.getVisibility(), View.VISIBLE);
             assertEquals(switchCameraButton.getVisibility(), View.GONE);
-            assertEquals(switchMultiCameraButton.getVisibility(), View.GONE);
             assertEquals(switchVideoButton.getVisibility(), View.GONE);
             assertEquals(exposureButton.getVisibility(), View.GONE);
             assertEquals(exposureLockButton.getVisibility(), View.GONE);
@@ -12399,7 +12340,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
 
         assertEquals(takePhotoButton.getVisibility(), View.VISIBLE);
         assertEquals(switchCameraButton.getVisibility(), (mPreview.getCameraControllerManager().getNumberOfCameras() > 1 ? View.VISIBLE : View.GONE));
-        assertEquals(switchMultiCameraButton.getVisibility(), (mActivity.showSwitchMultiCamIcon() ? View.VISIBLE : View.GONE));
         assertEquals(switchVideoButton.getVisibility(), View.VISIBLE);
         assertEquals(exposureButton.getVisibility(), View.VISIBLE);
         assertEquals(exposureLockButton.getVisibility(), (mPreview.supportsExposureLock() ? View.VISIBLE : View.GONE));
@@ -12851,7 +12791,6 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
      *  We check that we have a single range of non-zero values.
      * @param bitmap The bitmap to compute and check a histogram for.
      */
-    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     private HistogramDetails checkHistogram(Bitmap bitmap) {
         int [] histogram = mActivity.getApplicationInterface().getHDRProcessor().computeHistogram(bitmap, true);
         assertEquals(256, histogram.length);
