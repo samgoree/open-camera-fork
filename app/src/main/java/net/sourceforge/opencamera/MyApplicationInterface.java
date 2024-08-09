@@ -2407,10 +2407,7 @@ public class MyApplicationInterface extends BasicApplicationInterface {
         else if( done ) {
             // create thumbnails
             long debug_time = System.currentTimeMillis();
-            Bitmap thumbnail1 = null;
-            Bitmap thumbnail2 = null;
-            Bitmap thumbnail3 = null;
-            Bitmap thumbnail4 = null;
+            Bitmap thumbnail = null;
 
             ParcelFileDescriptor pfd_saf = null; // keep a reference to this as long as retriever, to avoid risk of pfd_saf being garbage collected
             MediaMetadataRetriever retriever = new MediaMetadataRetriever();
@@ -2423,7 +2420,7 @@ public class MyApplicationInterface extends BasicApplicationInterface {
                     pfd_saf = getContext().getContentResolver().openFileDescriptor(uri, "r");
                     retriever.setDataSource(pfd_saf.getFileDescriptor());
                 }
-                thumbnail1 = retriever.getFrameAtTime(-1);
+                thumbnail = retriever.getFrameAtTime(-1);
                 // Optionally, extract more frames for thumbnail2, thumbnail3, and thumbnail4
                 // e.g., thumbnail2 = retriever.getFrameAtTime(some_other_time);
             }
@@ -2448,10 +2445,10 @@ public class MyApplicationInterface extends BasicApplicationInterface {
                     e.printStackTrace();
                 }
             }
-            if( thumbnail1 != null ) {
+            if( thumbnail != null ) {
                 ImageButton galleryButton = main_activity.findViewById(R.id.gallery1);
-                int width = thumbnail1.getWidth();
-                int height = thumbnail1.getHeight();
+                int width = thumbnail.getWidth();
+                int height = thumbnail.getHeight();
                 if( MyDebug.LOG )
                     Log.d(TAG, "    video thumbnail size " + width + " x " + height);
                 if( width > galleryButton.getWidth() ) {
@@ -2460,20 +2457,17 @@ public class MyApplicationInterface extends BasicApplicationInterface {
                     int new_height = Math.round(scale * height);
                     if( MyDebug.LOG )
                         Log.d(TAG, "    scale video thumbnail to " + new_width + " x " + new_height);
-                    Bitmap scaled_thumbnail = Bitmap.createScaledBitmap(thumbnail1, new_width, new_height, true);
+                    Bitmap scaled_thumbnail = Bitmap.createScaledBitmap(thumbnail, new_width, new_height, true);
                     // careful, as scaled_thumbnail is sometimes not a copy!
-                    if( scaled_thumbnail != thumbnail1 ) {
-                        thumbnail1.recycle();
-                        thumbnail1 = scaled_thumbnail;
+                    if( scaled_thumbnail != thumbnail) {
+                        thumbnail.recycle();
+                        thumbnail = scaled_thumbnail;
                     }
                 }
-                final Bitmap thumbnail_f1 = thumbnail1;
-                final Bitmap thumbnail_f2 = thumbnail2;
-                final Bitmap thumbnail_f3 = thumbnail3;
-                final Bitmap thumbnail_f4 = thumbnail4;
+                final Bitmap thumbnail_f = thumbnail;
                 main_activity.runOnUiThread(new Runnable() {
                     public void run() {
-                        updateThumbnail(thumbnail_f1, thumbnail_f2, thumbnail_f3, thumbnail_f4, false);
+                        updateThumbnail(thumbnail_f, false);
                     }
                 });
             }
@@ -2804,10 +2798,10 @@ public class MyApplicationInterface extends BasicApplicationInterface {
         drawPreview.clearContinuousFocusMove();
     }
 
-    void  updateThumbnail(Bitmap thumbnail, Bitmap thumbnail2, Bitmap thumbnail3, Bitmap thumbnail4, boolean is_video) {
+    void  updateThumbnail(Bitmap thumbnail, boolean is_video) {
         if( MyDebug.LOG )
             Log.d(TAG, "updateThumbnail");
-        main_activity.updateGalleryIcon(thumbnail, thumbnail2, thumbnail3, thumbnail4);
+        main_activity.updateGalleryIcon(new Bitmap[]{thumbnail});
 
         drawPreview.updateThumbnail(thumbnail, is_video, true);
 

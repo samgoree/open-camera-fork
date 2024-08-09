@@ -39,6 +39,7 @@ import android.graphics.Paint;
 import android.graphics.Paint.Align;
 //import android.location.Address; // don't use until we have info for data privacy!
 //import android.location.Geocoder; // don't use until we have info for data privacy!
+import android.graphics.drawable.BitmapDrawable;
 import android.location.Location;
 import androidx.exifinterface.media.ExifInterface;
 import android.net.Uri;
@@ -52,6 +53,7 @@ import android.util.Xml;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -2831,14 +2833,10 @@ public class ImageSaver extends Thread {
                     Log.e(TAG, "failed to create thumbnail bitmap");
             }
             else {
-                final Bitmap thumbnail_f = thumbnail;
-                final Bitmap thumbnail_f2 = thumbnail;
-                final Bitmap thumbnail_f3 = thumbnail;
-                final Bitmap thumbnail_f4 = thumbnail;
-                final Bitmap thumbnail_f5 = thumbnail;
+                Bitmap thumbnail_f = thumbnail;
                 main_activity.runOnUiThread(new Runnable() {
                     public void run() {
-                        applicationInterface.updateThumbnail(thumbnail_f, thumbnail_f2, thumbnail_f3, thumbnail_f4, false);
+                        applicationInterface.updateThumbnail(thumbnail_f,false);
                     }
                 });
                 if( MyDebug.LOG ) {

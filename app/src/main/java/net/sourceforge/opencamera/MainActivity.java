@@ -3744,17 +3744,24 @@ public class MainActivity extends AppCompatActivity {
     private void updateGalleryIconToBlank() {
         if( MyDebug.LOG )
             Log.d(TAG, "updateGalleryIconToBlank");
-        ImageButton galleryButton = this.findViewById(R.id.gallery1);
-        int bottom = galleryButton.getPaddingBottom();
-        int top = galleryButton.getPaddingTop();
-        int right = galleryButton.getPaddingRight();
-        int left = galleryButton.getPaddingLeft();
-	    /*if( MyDebug.LOG )
-			Log.d(TAG, "padding: " + bottom);*/
-        galleryButton.setImageBitmap(null);
-        galleryButton.setImageResource(R.drawable.baseline_photo_library_white_48);
-        // workaround for setImageResource also resetting padding, Android bug
-        galleryButton.setPadding(left, top, right, bottom);
+        ImageButton galleryButton1 = this.findViewById(R.id.gallery1);
+        ImageButton galleryButton2 = this.findViewById(R.id.gallery2);
+        ImageButton galleryButton3 = this.findViewById(R.id.gallery3);
+        ImageButton galleryButton4 = this.findViewById(R.id.gallery4);
+        ImageButton[] imageButtons =  new ImageButton[] {galleryButton1, galleryButton2, galleryButton3, galleryButton4};
+        int bottom,top,right,left;
+        for(ImageButton galleryButton : imageButtons) {
+            bottom = galleryButton.getPaddingBottom();
+            top = galleryButton.getPaddingTop();
+            right = galleryButton.getPaddingRight();
+            left = galleryButton.getPaddingLeft();
+            /*if( MyDebug.LOG )
+                Log.d(TAG, "padding: " + bottom);*/
+            galleryButton.setImageBitmap(null);
+            galleryButton.setImageResource(R.drawable.baseline_photo_library_white_48);
+            // workaround for setImageResource also resetting padding, Android bug
+            galleryButton.setPadding(left, top, right, bottom);
+        }
         gallery_bitmap = null;
         gallery_bitmap2 = null;
         gallery_bitmap3 = null;
@@ -3764,9 +3771,9 @@ public class MainActivity extends AppCompatActivity {
 
     /** Shows a thumbnail for the gallery icon.
      */
-    void updateGalleryIcon(Bitmap thumbnail, Bitmap thumbnail2, Bitmap thumbnail3, Bitmap thumbnail4) {
+    void updateGalleryIcon(Bitmap thumbnails[]) {
         if( MyDebug.LOG )
-            Log.d(TAG, "updateGalleryIcon: " + thumbnail);
+            Log.d(TAG, "updateGalleryIcon: " + thumbnails);
         // If we're currently running the background task to update the gallery (see updateGalleryIcon()), we should cancel that!
         // Otherwise if user takes a photo whilst the background task is still running, the thumbnail from the latest photo will
         // be overridden when the background task completes. This is more likely when using SAF on Android 10+ with scoped storage,
@@ -3780,38 +3787,32 @@ public class MainActivity extends AppCompatActivity {
         ImageButton galleryButton2 = this.findViewById(R.id.gallery2);
         ImageButton galleryButton3 = this.findViewById(R.id.gallery3);
         ImageButton galleryButton4 = this.findViewById(R.id.gallery4);
-        //ImageButton galleryButton5 = this.findViewById(R.id.gallery5);
 
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        if(thumbnails.length == 1) {
+            // if we are adding a new thumbnail (e.g. taking a photo)
+            // we shift all the previous ones down by one
+            galleryButton.setImageBitmap(thumbnails[0]);
+            galleryButton2.setImageBitmap(gallery_bitmap);
+            galleryButton3.setImageBitmap(gallery_bitmap2);
+            galleryButton4.setImageBitmap(gallery_bitmap3);
 
-        boolean isAestheticsIndicatorEnabled = sharedPreferences.getBoolean("preference_aesthetics_indicator", false);
-        if (isAestheticsIndicatorEnabled) {
-            galleryButton.setVisibility(View.VISIBLE);
-            galleryButton2.setVisibility(View.VISIBLE);
-            galleryButton3.setVisibility(View.VISIBLE);
-            galleryButton4.setVisibility(View.VISIBLE);
-            //galleryButton5.setVisibility(View.VISIBLE);
-        } else {
-            galleryButton2.setVisibility(View.INVISIBLE);
-            galleryButton3.setVisibility(View.INVISIBLE);
-            galleryButton4.setVisibility(View.INVISIBLE);
-            //galleryButton5.setVisibility(View.INVISIBLE);
+            gallery_bitmap = thumbnails[0];
+            gallery_bitmap2 = gallery_bitmap;
+            gallery_bitmap3 = gallery_bitmap2;
+            gallery_bitmap4 = gallery_bitmap3;
+        } else if(thumbnails.length == 4){
+            // if we're adding four new thumbnails (e.g. loading from paused)
+            // we set all of them
+            galleryButton.setImageBitmap(thumbnails[0]);
+            galleryButton2.setImageBitmap(thumbnails[1]);
+            galleryButton3.setImageBitmap(thumbnails[2]);
+            galleryButton4.setImageBitmap(thumbnails[3]);
+
+            gallery_bitmap = thumbnails[0];
+            gallery_bitmap2 = thumbnails[1];
+            gallery_bitmap3 = thumbnails[2];
+            gallery_bitmap4 = thumbnails[3];
         }
-
-
-
-
-        galleryButton.setImageBitmap(thumbnail);
-        galleryButton2.setImageBitmap(thumbnail2);
-        galleryButton3.setImageBitmap(thumbnail3);
-        galleryButton4.setImageBitmap(thumbnail4);
-        //galleryButton5.setImageBitmap(thumbnail5);
-
-        gallery_bitmap = thumbnail;
-        gallery_bitmap2 = thumbnail2;
-        gallery_bitmap3 = thumbnail3;
-        gallery_bitmap4 = thumbnail4;
-        //gallery_bitmap5 = thumbnail5;
     }
 
     /** Updates the gallery icon by searching for the most recent photo.
@@ -3852,11 +3853,10 @@ public class MainActivity extends AppCompatActivity {
                         applicationInterface.getStorageUtils().getMediaAtDepth(1),
                         applicationInterface.getStorageUtils().getMediaAtDepth(2),
                         applicationInterface.getStorageUtils().getMediaAtDepth(3),
-                        applicationInterface.getStorageUtils().getMediaAtDepth(4),
-                        applicationInterface.getStorageUtils().getMediaAtDepth(5)
+                        applicationInterface.getStorageUtils().getMediaAtDepth(4)
                 };
 
-                Bitmap[] thumbnails = new Bitmap[5];
+                Bitmap[] thumbnails = new Bitmap[4];
 
                 KeyguardManager keyguard_manager = (KeyguardManager)MainActivity.this.getSystemService(Context.KEYGUARD_SERVICE);
                 boolean is_locked = keyguard_manager != null && keyguard_manager.inKeyguardRestrictedInputMode();
@@ -3947,16 +3947,12 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-                final Bitmap thumbnail_f = thumbnails[0];
-                final Bitmap thumbnail2_f = thumbnails[1];
-                final Bitmap thumbnail3_f = thumbnails[2];
-                final Bitmap thumbnail4_f = thumbnails[3];
-                final Bitmap thumbnail5_f = thumbnails[4];
+                final Bitmap[] thumbnails_f = thumbnails;
 
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
-                        onPostExecute(thumbnail_f, thumbnail2_f, thumbnail3_f, thumbnail4_f, thumbnail5_f);
+                        onPostExecute(thumbnails_f);
                     }
                 });
             }
@@ -3965,7 +3961,7 @@ public class MainActivity extends AppCompatActivity {
 
             /** Runs on UI thread, after background work is complete.
              */
-            private void onPostExecute(Bitmap thumbnail, Bitmap thumbnail2, Bitmap thumbnail3, Bitmap thumbnail4, Bitmap thumbnail5) {
+            private void onPostExecute(Bitmap [] thumbnails) {
                 if( MyDebug.LOG )
                     Log.d(TAG, "onPostExecute");
                 if( update_gallery_future != null && update_gallery_future.isCancelled() ) {
@@ -3983,11 +3979,11 @@ public class MainActivity extends AppCompatActivity {
                     }
                     applicationInterface.getStorageUtils().setLastMediaScanned(uri, is_raw);
                 }
-                if( thumbnail != null ) {
+                if( thumbnails[0] != null ) {
                     if( MyDebug.LOG )
                         Log.d(TAG, "set gallery button to thumbnail");
-                    updateGalleryIcon(thumbnail, thumbnail2, thumbnail3, thumbnail4);
-                   applicationInterface.getDrawPreview().updateThumbnail(thumbnail, is_video, true); // needed in case last ghost image is enabled
+                    updateGalleryIcon(thumbnails);
+                    //applicationInterface.getDrawPreview().updateThumbnail(thumbnails[0], is_video, true); // needed in case last ghost image is enabled
                    // applicationInterface.getDrawPreview().updateThumbnail(thumbnail2, is_video, false);
                    // applicationInterface.getDrawPreview().updateThumbnail(thumbnail3, is_video, false);
                     // applicationInterface.getDrawPreview().updateThumbnail(thumbnail4, is_video, false);
