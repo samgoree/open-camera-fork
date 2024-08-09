@@ -88,8 +88,8 @@ public class DrawAestheticsIndicator {
         p.setShader(new LinearGradient(0, 0, 0, canvas.getHeight()/2, edge_color, center_color, Shader.TileMode.CLAMP));
 
         this.graph_x_max = score.length;
-        int currentPosition = startPosition;
-        int nextPosition = (startPosition + 1) % score.length;
+        int currentPosition;
+        int nextPosition = (startPosition) % score.length;
 
         for(int i = 0; i < score.length-1; i++) {
             currentPosition = nextPosition;
@@ -110,8 +110,7 @@ public class DrawAestheticsIndicator {
 
         // Draw the second graph
         p.setShader(new LinearGradient(0, canvas.getHeight()/2, 0, canvas.getHeight(), edge_color, center_color, Shader.TileMode.CLAMP));
-        currentPosition = startPosition2;
-        nextPosition = (startPosition2 + 1) % score2.length;
+        nextPosition = (startPosition2) % score2.length;
 
         for(int i = 0; i < score2.length-1; i++) {
             currentPosition = nextPosition;
