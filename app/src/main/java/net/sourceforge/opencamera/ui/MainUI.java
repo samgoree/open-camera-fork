@@ -614,25 +614,37 @@ public class MainUI {
             // either the subview of the take_photo_or_aesthetics will be the take_photo button
             // or it will be the aesthetics surface view. We want both to take up the full space.
             view = main_activity.findViewById(R.id.take_photo);
+            boolean isAestheticsIndicatorEnabled = sharedPreferences.getBoolean("preference_aesthetics_indicator", false);
             view.setVisibility(
-                    sharedPreferences.getBoolean("preference_aesthetics_mode", false)
-                            ? View.GONE : View.VISIBLE
+                    isAestheticsIndicatorEnabled ? View.GONE : View.VISIBLE
             );
             view.setClickable(!sharedPreferences.getBoolean("preference_aesthetics_mode", false));
 
             aai = (AestheticsApplicationInterface) main_activity.getApplicationInterface();
             view = aai.getAestheticsIndicatorView();
             view.setVisibility(
-                    sharedPreferences.getBoolean("preference_aesthetics_mode", false)
-                            ? View.VISIBLE : View.GONE
+                    isAestheticsIndicatorEnabled ? View.VISIBLE : View.GONE
             );
 
 
             view = aai.getAestheticsIndicatorView2();
             view.setVisibility(
-                    sharedPreferences.getBoolean("preference_aesthetics_mode", false)
-                            ? View.VISIBLE : View.GONE
+                    isAestheticsIndicatorEnabled ? View.VISIBLE : View.GONE
             );
+
+            if (isAestheticsIndicatorEnabled) {
+                main_activity.findViewById(R.id.gallery1).setVisibility(View.VISIBLE);
+                main_activity.findViewById(R.id.gallery2).setVisibility(View.VISIBLE);
+                main_activity.findViewById(R.id.gallery3).setVisibility(View.VISIBLE);
+                main_activity.findViewById(R.id.gallery4).setVisibility(View.VISIBLE);
+                main_activity.findViewById(R.id.switch_video).setVisibility(View.GONE);
+            } else {
+                main_activity.findViewById(R.id.gallery2).setVisibility(View.GONE);
+                main_activity.findViewById(R.id.gallery3).setVisibility(View.GONE);
+                main_activity.findViewById(R.id.gallery4).setVisibility(View.GONE);
+                main_activity.findViewById(R.id.switch_video).setVisibility(View.VISIBLE);
+
+            }
 
             view = main_activity.findViewById(R.id.switch_camera);
             layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
