@@ -406,7 +406,7 @@ public class MyApplicationInterface extends BasicApplicationInterface {
 
     @Override
     public String getFlashPref() {
-        return sharedPreferences.getString(PreferenceKeys.getFlashPreferenceKey(cameraId), "");
+        return "false";
     }
 
     @Override
