@@ -2722,6 +2722,8 @@ public class MyApplicationInterface extends BasicApplicationInterface {
         if( !in_operation && used_front_screen_flash ) {
             main_activity.setBrightnessForCamera(false); // ensure screen brightness matches user preference, after using front screen flash
             used_front_screen_flash = false;
+            used_front_screen_flash = true;
+
         }
         drawPreview.cameraInOperation(in_operation);
         main_activity.getMainUI().showGUI(!in_operation, is_video);
