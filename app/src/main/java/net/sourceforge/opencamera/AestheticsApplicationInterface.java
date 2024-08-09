@@ -145,7 +145,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
         modelName2 = modelName2.replace(' ', '_');
         //get settings
         boolean indicator = sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false);
-        boolean capture = sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false);
+        boolean capture = sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false);
         String mode = "noindicator_normal";
         if(indicator && capture){
             mode = "indicator_capture";
@@ -469,7 +469,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
                                     //message_text = "Quality: " + Double.toString((double) Math.round(value * 10000d) / 10000d) + "Threshold: " + Double.toString( (double) Math.round(threshold * 10000d) / 10000d);
 
                                     // if we have a good photo and we're in aesthetics capture mode
-                                    if (value > threshold && sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false)) {
+                                    if (value > threshold && sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false)) {
                                         List<byte[]> images = new ArrayList<>();
                                         images.add(data);
                                         saveImage(false, images, new Date());
@@ -696,7 +696,7 @@ public class AestheticsApplicationInterface extends MyApplicationInterface{
     }
 
     public boolean isAestheticsMode(){
-        return this.sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false);
+        return this.sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false);
     }
 
     public void setModel(String newModelPath){

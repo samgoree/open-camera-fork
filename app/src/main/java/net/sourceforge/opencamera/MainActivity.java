@@ -659,7 +659,7 @@ public class MainActivity extends AppCompatActivity {
         }).start();
 
         // start aesthetics async
-        if(sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false)
+        if(sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false)
            || sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false)) {
             AestheticsApplicationInterface aai = (AestheticsApplicationInterface)this.applicationInterface;
             aai.start_take_photo_and_classify();
@@ -1464,7 +1464,7 @@ public class MainActivity extends AppCompatActivity {
 
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         if(applicationInterface instanceof AestheticsApplicationInterface
-                && (sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false)
+                && (sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false)
                 || sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false)) ){
             AestheticsApplicationInterface aai = (AestheticsApplicationInterface) applicationInterface;
             aai.resume_take_photo_and_classify();
@@ -1528,7 +1528,7 @@ public class MainActivity extends AppCompatActivity {
         applicationInterface.getLocationSupplier().freeLocationListeners();
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         if(applicationInterface instanceof AestheticsApplicationInterface
-                && (sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false)
+                && (sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false)
                 || sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false))
         ){
             AestheticsApplicationInterface aai = (AestheticsApplicationInterface) applicationInterface;
@@ -2534,7 +2534,7 @@ public class MainActivity extends AppCompatActivity {
 
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         if(applicationInterface instanceof AestheticsApplicationInterface
-                && (sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false)
+                && (sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false)
                 || sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false) )){
             AestheticsApplicationInterface aai = (AestheticsApplicationInterface) applicationInterface;
             aai.pause_take_photo_and_classify();
@@ -3095,7 +3095,7 @@ public class MainActivity extends AppCompatActivity {
         }
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         if(applicationInterface instanceof AestheticsApplicationInterface
-                && (sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false)
+                && (sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false)
                 || sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false)) ){
             AestheticsApplicationInterface aai = (AestheticsApplicationInterface) applicationInterface;
             aai.resume_take_photo_and_classify();

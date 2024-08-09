@@ -1642,7 +1642,7 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
             });
         }
         {
-            final Preference pref = (Preference)findPreference(PreferenceKeys.AestheticsModeKey);
+            final Preference pref = (Preference)findPreference(PreferenceKeys.AestheticsIndicatorKey);
             pref.setOnPreferenceChangeListener(new OnPreferenceChangeListener() {
                 @Override
                 public boolean onPreferenceChange(Preference arg0, Object newValue) {
@@ -1724,7 +1724,7 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
                     if(newValue.equals(true)){
                         aestheticsGraph.setVisibility(View.VISIBLE);
                         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(main_activity);
-                        if(sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false)){
+                        if(sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false)){
                             aestheticsIndicator.setVisibility(View.VISIBLE);
                             galleryButton2.setVisibility(View.VISIBLE);
                             galleryButton3.setVisibility(View.VISIBLE);
@@ -1737,7 +1737,7 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
                         galleryButton3.setVisibility(View.INVISIBLE);
                         galleryButton4.setVisibility(View.INVISIBLE);
                         aestheticsIndicator.setVisibility(View.GONE);
-                        if(!sharedPreferences.getBoolean(PreferenceKeys.AestheticsModeKey, false)){
+                        if(!sharedPreferences.getBoolean(PreferenceKeys.AestheticsIndicatorKey, false)){
                             aai.stop_take_photo_and_classify();
                         }
                     }
